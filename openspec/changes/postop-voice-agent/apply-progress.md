@@ -1,18 +1,15 @@
-# Apply Progress: Unit 1 / Phase 1 (Scaffold & Reproducible Bootstrap)
+# Apply Progress: Units 1 & 2 / Phases 1 & 2
 
-- **Status**: Completed
-- **Completed Tasks**: 1.1, 1.2, 1.3, 1.4, 1.5
-- **Files Created**:
-  - `requirements.txt` (pinned dependencies with Python 3.12 compatibility)
-  - `.env.example` (GROQ_API_KEY template)
-  - `.gitignore` (venv, .env, .pdf)
-  - `backend/__init__.py`
-  - `backend/main.py` (FastAPI app, CORS, `/health`, `/admin` static mount)
-  - `tests/__init__.py`
-  - `tests/test_main.py` (Unit test for `/health` and security check that API key is not hardcoded)
-  - `scripts/setup.sh` (12-min reproducible bootstrap script)
-  - `README.md` (Setup instructions and verification steps)
+- **Status**: Unit 2 Completed (RAG Hot-Swap Service)
+- **Completed Tasks**: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4
+- **Files Created / Modified**:
+  - `requirements.txt` (pinned dependencies)
+  - `.env.example`, `.gitignore`
+  - `backend/main.py`, `backend/services/rag.py`
+  - `scripts/setup.sh`, `scripts/ingest.py`
+  - `tests/test_main.py`, `tests/test_rag.py`
+  - `README.md`
 - **Verification**:
-  - `pytest` executed successfully (`2 passed`).
-  - `/health` endpoint verified.
-- **Rollback Boundary**: Revert PR 1 files; nothing else has landed.
+  - `pytest` executed successfully (`5 passed` across `test_main.py` and `test_rag.py`).
+  - RAG hot-swap ingestion, zero contamination, chunking boundaries, and deletion verified via automated tests.
+- **Rollback Boundary**: Revert PR 2 files (`backend/services/rag.py`, `scripts/ingest.py`, `tests/test_rag.py`) for Unit 2 rollback.

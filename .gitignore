@@ -1,7 +1,12 @@
 venv/
+.venv_py11/
+.venv_py12/
 .env
 *.pdf
 __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.pyc
+chroma_db/
+test_chroma/
+test_chroma_rag_db/

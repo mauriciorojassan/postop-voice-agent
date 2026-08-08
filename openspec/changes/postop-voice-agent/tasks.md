@@ -39,10 +39,10 @@ Dependency rule: phases order strictly; PR N waits on PR N−1 merge.
 
 ## Phase 2: RAG Service (hot-swap)
 
-- [ ] 2.1 RED: `tests/test_rag.py` — ingest v1, replace same doc_id with v2, assert zero old `version_hash` chunks retrievable
-- [ ] 2.2 RED: chunking 512/64 boundaries + overlap assertions
-- [ ] 2.3 Implement `backend/services/rag.py`: ChromaDB, BGE-M3 (sentence-transformers), chunker (512/64), upsert-purge by `version_hash`, retrieval + `source_citations`
-- [ ] 2.4 `scripts/ingest.py`: CLI ingest `textos/*.pdf` → index + stats (setup path)
+- [x] 2.1 RED: `tests/test_rag.py` — ingest v1, replace same doc_id with v2, assert zero old `version_hash` chunks retrievable
+- [x] 2.2 RED: chunking 512/64 boundaries + overlap assertions
+- [x] 2.3 Implement `backend/services/rag.py`: ChromaDB, BGE-M3 (sentence-transformers), chunker (512/64), upsert-purge by `version_hash`, retrieval + `source_citations`
+- [x] 2.4 `scripts/ingest.py`: CLI ingest `textos/*.pdf` → index + stats (setup path)
 
 ## Phase 3: Escalation Engine (+ Summary shape)
 
