@@ -46,10 +46,10 @@ Dependency rule: phases order strictly; PR N waits on PR N−1 merge.
 
 ## Phase 3: Escalation Engine (+ Summary shape)
 
-- [ ] 3.1 RED: `tests/test_escalation.py` — parametrized 8-category red-flag matrix (hemorrhage, fever≥38.5, dyspnea, dehiscence, severe pain NRS≥8, sepsis, altered consciousness, urinary retention) → forced `"rojo"`
-- [ ] 3.2 RED: one-way floor — LLM `rojo` never de-escalated; floor may escalate infra
-- [ ] 3.3 Implement `backend/services/escalation.py`: regex floor (Colombian Spanish), Groq Llama triage, Pydantic decision record `{triage_level, justification,source_citations,confidence}`
-- [ ] 3.4 Implement trayectoria snapshot binding (`dolor_n`/`fiebre_c`/`herida`/`respiracion`...) for floor + LLM input
+- [x] 3.1 RED: `tests/test_escalation.py` — parametrized 8-category red-flag matrix (hemorrhage, fever≥38.5, dyspnea, dehiscence, severe pain NRS≥8, sepsis, altered consciousness, urinary retention) → forced `"rojo"`
+- [x] 3.2 RED: one-way floor — LLM `rojo` never de-escalated; floor may escalate infra
+- [x] 3.3 Implement `backend/services/escalation.py`: regex floor (Colombian Spanish), Groq Llama triage, Pydantic decision record `{triage_level, justification,source_citations,confidence}`
+- [x] 3.4 Implement trayectoria snapshot binding (`dolor_n`/`fiebre_c`/`herida`/`respiracion`...) for floor + LLM input
 
 ## Phase 4: Admin Console
 
