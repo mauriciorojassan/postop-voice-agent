@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post-Op Voice Agent - Llamada de Seguimiento</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
+    <div class="max-w-xl w-full bg-white shadow-lg rounded-xl p-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Asistente de Voz Post-Operatorio</h1>
+        <p class="text-sm text-gray-600 mb-6">Llamada de seguimiento médico automatizado (Colombian Spanish).</p>
+
+        <div id="status-card" class="mb-6 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-center font-medium">
+            Desconectado
+        </div>
+
+        <div class="flex space-x-4 mb-6">
+            <button id="start-btn" onclick="startCall()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow transition">
+                Iniciar Llamada
+            </button>
+            <button id="end-btn" onclick="endCall()" disabled class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg shadow opacity-50 cursor-not-allowed transition">
+                Finalizar Llamada
+            </button>
+        </div>
+
+        <div class="border border-gray-200 rounded-lg p-4 h-64 overflow-y-auto bg-gray-50 mb-4" id="log-container">
+            <div class="text-gray-400 text-center italic text-sm">El historial de conversación aparecerá aquí...</div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-gray-500">
+            <span>Triage actual: <span id="triage-badge" class="font-bold text-green-600">Verde</span></span>
+            <span>Barge-in: <span class="text-green-600 font-semibold">Activo</span></span>
+        </div>
+    </div>
+
+    <script src="call.js"></script>
+</body>
+</html>
