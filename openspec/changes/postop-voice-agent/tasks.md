@@ -53,9 +53,9 @@ Dependency rule: phases order strictly; PR N waits on PR N−1 merge.
 
 ## Phase 4: Admin Console
 
-- [ ] 4.1 RED: `tests/test_admin.py` — `../` path traversal + wrong MIME rejected; filename via basename
-- [ ] 4.2 `backend/routers/admin.py`: `POST|GET|DELETE /api/documents` with status badges (Processing/Processed and Available/Error), delete purges file + Chroma chunks
-- [ ] 4.3 `console/index.html` + `console/admin.js`: upload form, doc table (chunks, status), delete button
+- [x] 4.1 RED: `tests/test_admin.py` — `../` path traversal + wrong MIME rejected; filename via basename
+- [x] 4.2 `backend/routers/admin.py`: `POST|GET|DELETE /api/documents` with status badges (Processing/Processed and Available/Error), delete purges file + Chroma chunks
+- [x] 4.3 `console/index.html` + `console/admin.js`: upload form, doc table (chunks, status), delete button
 
 ## Phase 5: Conversation Manager
 

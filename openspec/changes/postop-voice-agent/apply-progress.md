@@ -39,3 +39,16 @@
 - **Verification**:
   - `pytest tests/test_escalation.py` executed successfully (`32 passed`).
 - **Rollback Boundary**: Revert `backend/services/escalation.py` and `tests/test_escalation.py` only.
+
+## Unit 4 / Phase 4 (Admin Knowledge Console)
+- **Status**: Completed
+- **Completed Tasks**: 4.1, 4.2, 4.3
+- **Files Created / Modified**:
+  - `backend/routers/admin.py` (REST endpoints POST/GET/DELETE `/api/documents`, filename sanitization via `os.path.basename`, path traversal prevention, PDF extension validation, document registry tracking status: Processing / Processed and Available / Error, purging Chroma chunks and source PDF on delete)
+  - `backend/main.py` (Registered admin router under `/api`)
+  - `console/index.html` (Minimal admin dashboard HTML with Tailwind styling, upload form, and indexed documents table)
+  - `console/admin.js` (Frontend logic for uploading documents, rendering status badges, and deleting documents)
+  - `tests/test_admin.py` (Unit and integration tests verifying path traversal rejection, non-PDF rejection, upload -> status becomes Processed and Available, list documents, and delete -> Chroma purge)
+- **Verification**:
+  - `pytest tests/test_admin.py` and full `pytest` suite executed successfully (`40 passed`).
+- **Rollback Boundary**: Revert `backend/routers/admin.py`, `tests/test_admin.py`, `console/`, and router registration in `backend/main.py`.
