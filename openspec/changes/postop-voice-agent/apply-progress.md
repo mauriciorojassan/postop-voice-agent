@@ -6,7 +6,7 @@
 - **Files Created**:
   - `requirements.txt` (pinned dependencies with Python 3.12 compatibility)
   - `.env.example` (GROQ_API_KEY template)
-  - `.gitignore` (venv, .env, .pdf)
+  - `.gitignore` (venv, .env, .pdf, chroma_db/, test_chroma/)
   - `backend/__init__.py`
   - `backend/main.py` (FastAPI app, CORS, `/health`, `/admin` static mount)
   - `tests/__init__.py`
@@ -17,6 +17,18 @@
   - `pytest` executed successfully (`2 passed`).
   - `/health` endpoint verified.
 - **Rollback Boundary**: Revert PR 1 files; nothing else has landed.
+
+## Unit 2 / Phase 2 (RAG Hot-Swap Service)
+- **Status**: Completed
+- **Completed Tasks**: 2.1, 2.2, 2.3, 2.4
+- **Files Created / Modified**:
+  - `backend/services/rag.py` (ChromaDB + BGE-M3, chunking 512/64, metadata-hashed versioning, zero-contamination upsert-purge, retrieval with source citations, scanned-PDF handling)
+  - `scripts/ingest.py` (CLI ingest of clinical PDFs with stats)
+  - `tests/test_rag.py` (chunk overlap boundaries, v1→v2 zero contamination, deletion forgets)
+- **Verification**:
+  - `pytest tests/test_rag.py` executed successfully (`5 passed`).
+  - RAG hot-swap ingestion, zero contamination, chunking boundaries, and deletion verified via automated tests.
+- **Rollback Boundary**: Revert `backend/services/rag.py`, `scripts/ingest.py`, `tests/test_rag.py`.
 
 ## Unit 3 / Phase 3 (Escalation Engine + Summary shape)
 - **Status**: Completed

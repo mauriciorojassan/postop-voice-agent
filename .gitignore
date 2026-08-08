@@ -1,4 +1,6 @@
 venv/
+.venv_py11/
+.venv_py12/
 .env
 *.pdf
 __pycache__/
@@ -9,3 +11,4 @@ __pycache__/
 # ChromaDB runtime artifacts
 chroma_db/
 test_chroma/
+test_chroma_rag_db/
