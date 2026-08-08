@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.pyc
+
+# ChromaDB runtime artifacts
+chroma_db/
+test_chroma/
