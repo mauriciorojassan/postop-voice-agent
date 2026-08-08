@@ -59,8 +59,8 @@ Dependency rule: phases order strictly; PR N waits on PR N−1 merge.
 
 ## Phase 5: Conversation Manager
 
-- [ ] 5.1 RED: ambiguous input ("me duele un poquito por ahí") → clarification prompt (location + NRS), no premature answer
-- [ ] 5.2 Implement `backend/conversation.py`: adaptive flow per trayectoria state, max clarification rounds, escalation handoff on repeated ambiguity
+- [x] 5.1 RED: ambiguous input ("me duele un poquito por ahí") → clarification prompt (location + NRS), no premature answer
+- [x] 5.2 Implement `backend/conversation.py`: adaptive flow per trayectoria state, max clarification rounds, escalation handoff on repeated ambiguity
 
 ## Phase 6: Voice Loop
 

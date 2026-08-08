@@ -100,10 +100,15 @@ class EscalationEngine:
             except ValueError:
                 pass
 
-        # Check regex patterns across categories
+        # Check regex patterns across categories (with negation check)
         for category, patterns in self.RED_FLAG_PATTERNS.items():
             for pat in patterns:
-                if re.search(pat, text):
+                for match in re.finditer(pat, text):
+                    start = match.start()
+                    prefix = text[max(0, start - 25):start]
+                    negations = ["no ", "sin ", "ningun", "cero ", "nada de ", "negativo "]
+                    if any(neg in prefix for neg in negations):
+                        continue
                     return "rojo"
         
         return None
