@@ -64,18 +64,18 @@ Dependency rule: phases order strictly; PR N waits on PR N−1 merge.
 
 ## Phase 6: Voice Loop
 
-- [ ] 6.1 RED: `tests/test_voice.py` — rapid connect attempts rate-limited, idle WS times out
-- [ ] 6.2 RED: TTS subprocess injection — all args via list/escape, no `shell=True`; Kokoro/Piper args escaped
-- [ ] 6.3 Implement `backend/services/stt.py`: Groq Whisper v3 with Colombian slang prompt (calentura, chuzo, "ta' hinchao")
-- [ ] 6.4 Implement `backend/services/tts.py`: Kokoro-82M ONNX (load >5s → Piper fallback)
-- [ ] 6.5 `backend/routers/voice.py`: WS `/ws/voice` — buffer audio, no STT→conversation→TTS stream; barge-in cancels TTS stream; close → JSON per-call summary
+- [x] 6.1 RED: `tests/test_voice.py` — rapid connect attempts rate-limited, idle WS times out
+- [x] 6.2 RED: TTS subprocess injection — all args via list/escape, no `shell=True`; Kokoro/Piper args escaped
+- [x] 6.3 Implement `backend/services/stt.py`: Groq Whisper v3 with Colombian slang prompt (calentura, chuzo, "ta' hinchao")
+- [x] 6.4 Implement `backend/services/tts.py`: Kokoro-82M ONNX (load >5s → Piper fallback)
+- [x] 6.5 `backend/routers/voice.py`: WS `/ws/voice` — buffer audio, no STT→conversation→TTS stream; barge-in cancels TTS stream; close → JSON per-call summary
 
 ## Phase 7: Eval + Final Docs
 
-- [ ] 7.1 `eval/run_eval.py`: reads `dataset_final.xlsx` → accuracy, latency (P50<600ms / P95<950ms), triage vs `label_ground_truth`; fail on any `rojo` miss
-- [ ] 7.2 Eval offline mode (mocked Groq/Kokoro) for no-key CI
-- [ ] 7.3 README ≤15-min path (mirrors setup.sh), declared allowed models + rationale, rubric map (eliminatory gates + deliverables)
-- [ ] 7.4 Full `pytest` + `eval/run_eval.py` green; update tasks.md checkboxes
+- [x] 7.1 `eval/run_eval.py`: reads `dataset_final.xlsx` → accuracy, latency (P50<600ms / P95<950ms), triage vs `label_ground_truth`; fail on any `rojo` miss
+- [x] 7.2 Eval offline mode (mocked Groq/Kokoro) for no-key CI
+- [x] 7.3 README ≤15-min path (mirrors setup.sh), declared allowed models + rationale, rubric map (eliminatory gates + deliverables)
+- [x] 7.4 Full `pytest` + `eval/run_eval.py` green; update tasks.md checkboxes
 
 ## Threat Matrix → Task Traceability
 

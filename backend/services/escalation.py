@@ -32,16 +32,17 @@ class EscalationEngine:
         ],
         "fever": [
             r"fiebre", r"calentura", r"temperatura alta",
-            r"38\.[5-9]", r"39(?:\.\d+)?", r"4[0-2](?:\.\d+)?",
-            r"temblando de frío"
+            r"3[8-9]\b", r"38\.[0-9]", r"39(?:\.\d+)?", r"4[0-2](?:\.\d+)?",
+            r"temblando de frío", r"calientica", r"afiebrada", r"cuerpo caliente"
         ],
         "dyspnea": [
             r"ahogo", r"falta de aire", r"no puedo respirar",
             r"me ahogo", r"respiración agitada", r"opresión pecho"
         ],
         "dehiscence": [
-            r"se abrió", r"pus", r"secreción fétida",
-            r"hueco en la herida", r"líquido mal olor"
+            r"se abrió", r"pus", r"secreción", r"líquido",
+            r"amarill[oi]", r"fétida", r"hueco en la herida",
+            r"líquido mal olor"
         ],
         "severe_pain": [
             r"dolor insoportable", r"nrs\s*(?:[8-9]|10)",
@@ -80,12 +81,12 @@ class EscalationEngine:
             if any(term in herida_status for term in ["sangrado", "pus", "abierta", "dehiscencia"]):
                 return "rojo"
 
-        # Numeric safety checks for temperature >= 38.5
+        # Numeric safety checks for temperature >= 38.0
         temp_matches = re.findall(r"(\d+(?:\.\d+)?)\s*(?:grados|°c|c)?", text)
         for t_str in temp_matches:
             try:
                 val = float(t_str)
-                if 38.5 <= val < 45.0:
+                if 38.0 <= val < 45.0:
                     return "rojo"
             except ValueError:
                 pass
