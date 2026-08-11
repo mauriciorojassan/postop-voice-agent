@@ -62,6 +62,16 @@ python eval/run_eval.py --dataset /path/to/dataset_final.xlsx --offline
 - Measures triage accuracy, latency (P50 < 600ms, P95 < 950ms), and confusion matrix.
 - Enforces eliminatory safety gate: **zero missed `rojo` red flags**.
 
+## Deliverables
+
+- [Final Technical Report](FINAL_REPORT.md)
+- [Architecture Diagram](ARCHITECTURE_DIAGRAM.md)
+- Video Demo: **[Video Demo link pending upload]**
+
+Before final submission, upload the video demo to YouTube as **unlisted**, then replace the placeholder above with the resulting direct link. Do not invent or publish a URL before the upload exists.
+
+The repository includes the [MIT License](LICENSE). Use [.env.example](.env.example) as the safe starting point for local configuration; keep secrets in `.env` and out of version control.
+
 ---
 
 ## Rubric Map & Deliverables
