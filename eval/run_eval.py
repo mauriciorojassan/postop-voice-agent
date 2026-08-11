@@ -6,6 +6,7 @@ import time
 import json
 import numpy as np
 import pandas as pd
+from groq import Groq
 from typing import List, Dict, Any, Optional
 
 from backend.services.escalation import EscalationEngine, TriageDecisionPayload
@@ -21,7 +22,15 @@ def run_evaluation(dataset_path: str, offline: bool = False, capa: Optional[str]
         
     print(f"Dataset loaded: {len(df)} rows, {df['caso_id'].nunique()} cases.")
     
-    engine = EscalationEngine()
+    # ponytail: online mode wires the LLM reasoning layer only when a key exists;
+    # otherwise the engine degrades to the deterministic floor and the report says so.
+    groq_client = None
+    if not offline:
+        api_key = os.getenv("GROQ_API_KEY")
+        if api_key:
+            groq_client = Groq(api_key=api_key)
+    engine = EscalationEngine(groq_client=groq_client)
+    llm_wired = groq_client is not None
     
     y_true = []
     y_pred = []
@@ -84,9 +93,16 @@ def run_evaluation(dataset_path: str, offline: bool = False, capa: Optional[str]
     p50_lat = float(np.percentile(latencies, 50)) if latencies else 0.0
     p95_lat = float(np.percentile(latencies, 95)) if latencies else 0.0
     
+    if offline:
+        mode_label = "offline-floor-only"
+    elif llm_wired:
+        mode_label = "online-llm"
+    else:
+        mode_label = "online-floor-only (no GROQ_API_KEY)"
+
     report = {
         "total_cases": total,
-        "mode": "offline-floor-only" if offline else "online-llm",
+        "mode": mode_label,
         "accuracy": round(accuracy, 4),
         "latency_p50_ms": round(p50_lat, 2),
         "latency_p95_ms": round(p95_lat, 2),
