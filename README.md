@@ -66,6 +66,7 @@ python eval/run_eval.py --dataset /path/to/dataset_final.xlsx --offline
 
 - [Final Technical Report](FINAL_REPORT.md)
 - [Architecture Diagram](ARCHITECTURE_DIAGRAM.md)
+- [Local Video Demo](demo/postop-voice-agent-demo.mp4)
 - Video Demo: **[Video Demo link pending upload]**
 
 Before final submission, upload the video demo to YouTube as **unlisted**, then replace the placeholder above with the resulting direct link. Do not invent or publish a URL before the upload exists.
