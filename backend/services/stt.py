@@ -17,7 +17,7 @@ class STTService:
             "dolor, nrs, fiebre, ahogo, desangrar, pus, infección, herida, mareo, vómito."
         )
 
-    def transcribe(self, audio_bytes: bytes, filename: str = "audio.wav") -> str:
+    def transcribe(self, audio_bytes: bytes, filename: str) -> str:
         """
         Transcribes audio bytes using Groq Whisper Large V3 with Colombian slang prompting.
         Falls back to a mock transcript if API key is missing or in test mode.
@@ -37,7 +37,7 @@ class STTService:
                 language="es",
                 response_format="text"
             )
-            return str(transcript).strip()
+            return getattr(transcript, "text", str(transcript)).strip()
         except Exception as e:
             logger.error(f"Groq STT transcription error: {e}")
             raise RuntimeError(f"STT transcription failed: {e}")

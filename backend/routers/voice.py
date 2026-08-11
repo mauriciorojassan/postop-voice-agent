@@ -104,7 +104,7 @@ async def voice_websocket_endpoint(
                     utterance_bytes = bytes(audio_buffer)
                     audio_buffer.clear()
                     current_response_task = asyncio.create_task(
-                        handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes)
+                        handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes, "audio.webm")
                     )
 
             elif "text" in message and message["text"]:
@@ -120,7 +120,7 @@ async def voice_websocket_endpoint(
                         utterance_bytes = bytes(audio_buffer)
                         audio_buffer.clear()
                         current_response_task = asyncio.create_task(
-                            handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes)
+                            handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes, "audio.webm")
                         )
                 elif text_data == "ping":
                     await websocket.send_text("pong")
@@ -149,11 +149,12 @@ async def handle_voice_turn(
     stt_service: STTService,
     tts_service: TTSService,
     conv_manager: ConversationManager,
-    audio_bytes: bytes
+    audio_bytes: bytes,
+    filename: str
 ):
     try:
         # 1. STT Transcription
-        transcript = stt_service.transcribe(audio_bytes)
+        transcript = stt_service.transcribe(audio_bytes, filename)
         logger.info(f"Transcribed patient speech: {transcript}")
         await websocket.send_json({"event": "transcript", "text": transcript})
 
