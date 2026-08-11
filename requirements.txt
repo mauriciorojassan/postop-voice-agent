@@ -1,9 +1,11 @@
 fastapi==0.110.0
 uvicorn==0.28.0
 chromadb==0.4.24
-groq==0.4.2
+groq==1.6.0
 sentence-transformers==2.5.1
 numpy==1.26.4
+pandas==3.0.5
+openpyxl==3.1.5
 python-dotenv==1.0.1
 pydantic==2.6.4
 kokoro-onnx==0.1.2
