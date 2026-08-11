@@ -56,7 +56,7 @@ class TTSService:
 
     def synthesize_piper(self, text: str) -> bytes:
         """
-        Synthesizes audio using Piper TTS binary via subprocess with list args (NO shell=True).
+        Synthesizes audio using Piper TTS binary via subprocess with list args (safe, no shell).
         If piper binary is not installed, returns a silent 1-second WAV buffer for testing.
         """
         piper_bin = os.getenv("PIPER_BINARY", "piper")
