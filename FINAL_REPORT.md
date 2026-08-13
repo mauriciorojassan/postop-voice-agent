@@ -2,50 +2,55 @@
 
 ## Executive Summary
 
-This repository implements a FastAPI prototype for post-operative follow-up in Colombian Spanish. Its demonstrated interaction is a browser microphone call: the user records a manual turn, sends `audio.webm` through a WebSocket, receives a transcript and structured response, and hears the answer through browser `speechSynthesis`. It is not telephony and must not replace qualified clinical judgment.
+This repository implements a FastAPI prototype for post-operative follow-up in Colombian Spanish. The demonstrated interaction is a browser microphone call: the user records a manual turn, sends `audio.webm` through a WebSocket, receives a transcript and structured response, and hears the answer through browser `speechSynthesis`. It is not telephony and does not replace qualified clinical judgment.
 
-The current validation record contains **57 passing tests**, an HTTP health smoke check returning **200**, a WebSocket audio and ping-pong check, and a **46-second, 1280x720** video evidence recording.
+The current validation record includes 57 passing tests, installation and syntax checks, HTTP route smoke checks, a WebSocket audio and ping/pong check, and a 46-second 1280x720 video recording.
 
 ## Architecture
 
-The service exposes four relevant interfaces:
+The implemented voice path is `audio.webm` -> local Faster-Whisper -> `ConversationManager` -> deterministic `EscalationEngine` -> structured response. The browser's `speechSynthesis` is the primary audible response in the demo. Groq STT/reasoning and Kokoro/Piper backend TTS are optional configuration-dependent paths, not prerequisites for the local-first flow.
 
-- `/call`: browser call surface using microphone capture and manual turns.
-- `/ws/voice`: WebSocket endpoint for audio bytes, `EOT` turn boundaries, structured events, and `ping`/`pong`.
-- `/api/documents`: PDF upload, listing, and deletion for the local RAG store.
-- `/health`, `/admin`, and `/docs`: health, administration, and interactive API documentation.
+The safety floor evaluates red flags before ambiguity and domain progression. It can force `rojo`; optional reasoning cannot lower that result. Ambiguous answers enter clarification, and repeated ambiguity can become `amarillo` with a priority handoff.
 
-The voice path is `audio.webm` -> local Faster-Whisper -> `ConversationManager` -> deterministic `EscalationEngine` -> optional Groq reasoning -> response event. The browser's `speechSynthesis` is the primary audible response in the demo. Optional backend Kokoro/Piper TTS remains available through `TTSService`.
+See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component map, clinical decision flow, event contracts, and boundaries.
 
-The safety floor evaluates red flags before normal progression. It can force `rojo`; optional LLM reasoning cannot lower that escalation. Ambiguous answers enter clarification and repeated ambiguity can become `amarillo`.
+## Development Process Evidence
 
-See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and data-flow view.
+The implementation process focused on a small set of verifiable engineering concerns:
 
-## Models and Tools
+- Architecture exploration mapped the browser, WebSocket, conversation, safety, retrieval, and voice paths before documentation changes.
+- The safety floor was designed as a deterministic first gate with one-way red-flag escalation.
+- Data and RAG behavior was reviewed around PDF extraction, chunking, versioned document ingestion, embeddings, and local persistence.
+- Boundary cases for red flags, repeated ambiguity, insufficient audio, WebM filenames, disconnects, and provider responses were exercised.
+- Installation and voice behavior were validated through local startup, HTTP checks, WebSocket audio, ping/pong, and manual browser turns.
+- WebM handling, VAD/turn-boundary behavior, and manual turn correction were reviewed to keep `EOT` as the authoritative submission boundary.
 
-| Area | Implementation | Role |
-|---|---|---|
-| Web service | FastAPI and Uvicorn | HTTP routes, WebSocket, static surfaces, and health endpoint |
-| STT | Faster-Whisper, CPU/int8, local by default | Real Spanish transcription of browser `audio.webm` |
-| Optional STT | Groq Whisper | Remote alternative selected explicitly with configuration |
-| Triage reasoning | Optional Llama 3 through Groq | Contextual reasoning after the deterministic safety floor |
-| Safety floor | Python rules and thresholds | One-way red-flag escalation |
-| Retrieval | BGE-M3 and ChromaDB | Local multilingual embeddings and persistent document retrieval |
-| PDF extraction | `pypdf` | Included dependency for the RAG ingestion path |
-| Demo TTS | Browser `speechSynthesis` | Primary audible response in the browser demo |
-| Optional backend TTS | Kokoro ONNX and Piper | Local synthesis or fallback audio when configured |
+## Prompt Strategy (High-Level)
 
-## Operational Flow
+The development prompts were used as focused work themes rather than as application runtime logic:
 
-1. The browser opens a WebSocket and requests microphone permission.
-2. The user clicks **Grabar**, speaks, and clicks **Enviar**.
-3. The browser sends the WebM chunks followed by `EOT`; there is no automatic turn detection or active barge-in flow.
-4. The backend transcribes, evaluates safety, advances the conversation state, and sends transcript and agent-response events.
-5. The browser speaks the response with `speechSynthesis`; the session can emit a final summary.
+- Explore the existing architecture and trace the voice-to-decision path.
+- Design and verify the deterministic safety floor and its escalation precedence.
+- Review data ingestion and RAG behavior, including PDF failure modes and source boundaries.
+- Run focused boundary cases for red flags and repeated ambiguous answers.
+- Validate installation, local voice operation, WebM handling, VAD/turn boundaries, and manual turn recovery.
 
-## Installation
+No internal prompt text, credentials, or secrets are part of this report.
 
-Supported route: Linux, Python 3.12, and Chrome/Chromium. The first installation and model download are not bounded to 15 minutes; timing depends on network, CPU, disk, packages, and model size.
+## Configuration Evidence
+
+| Item | Verified configuration or repository evidence |
+|---|---|
+| Runtime | Python 3.12 on Linux; browser flow targets Chrome/Chromium |
+| Default STT | `STT_PROVIDER=local` with Faster-Whisper |
+| Model choices | `LOCAL_WHISPER_MODEL=tiny` for first run; `small` when higher accuracy and CPU/model cost are acceptable |
+| Inference | CPU/int8 local path |
+| Optional provider | Groq is available only when explicitly configured with network access and a valid key |
+| Environment | `.env.example` documents the setup without secrets; local `.env` is not part of the public artifact |
+| Dependencies | `requirements.txt` includes Faster-Whisper and `pypdf` alongside the application dependencies |
+| Turn control | Manual **Grabar** -> speak -> **Enviar** flow; browser sends WebM chunks followed by `EOT` |
+
+Minimal installation:
 
 ```bash
 python3.12 -m venv .venv
@@ -55,46 +60,46 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Set `STT_PROVIDER=local` and `LOCAL_WHISPER_MODEL=tiny` for the first test. Use `small` for better accuracy when the machine can handle the larger download and CPU cost. The RAG path depends on `pypdf`, already pinned in `requirements.txt`.
+## Validation Evidence
 
-```bash
-.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-```
+| Check | Command or observation | Result |
+|---|---|---|
+| Automated tests | `./.venv/bin/pytest -q` | `57 passed, 3 warnings` |
+| Dependency consistency | `./.venv/bin/pip check` | No broken requirements reported |
+| Python syntax | `./.venv/bin/python -m compileall backend tests` | Completed successfully |
+| JavaScript syntax | `node --check console/call/call.js` | Completed successfully |
+| HTTP smoke | `GET /health`, `/call`, `/admin`, `/docs` | HTTP `200` on all four routes |
+| WebSocket contract | Initial server audio and `ping`/`pong` | Initial audio payload: `44144` bytes; ping returned `pong` |
+| Video artifact | `ffprobe` on `demo/postop-voice-agent-demo.mp4` | `46s`, `1280x720` |
+| Browser E2E | Not automated | Manual video evidence exists; no automated browser E2E is claimed |
 
-The browser call is at `http://localhost:8000/call`; API docs are at `http://localhost:8000/docs`.
+The checks validate application contracts and service behavior. They do not constitute clinical validation or a full browser-driven integration suite.
 
-## Current Validation
+## Key Engineering Decisions
 
-Recorded checks for the current build:
+- **Deterministic safety floor:** red flags are evaluated first, and optional reasoning cannot downgrade `rojo`.
+- **No fake transcript:** the demonstrated path uses real local Faster-Whisper transcription; a mock transcript is not presented as voice capability.
+- **Local-first STT:** Faster-Whisper with CPU/int8 keeps the default path usable without a remote provider.
+- **Explicit turns:** browser `EOT` boundaries are preferred over brittle automatic segmentation; this keeps turn ownership visible and recoverable.
+- **Fail-closed PDF extraction:** missing `pypdf` or a PDF without a text layer raises an explicit error instead of ingesting empty content.
+- **Browser demo audio:** `speechSynthesis` is the primary demo output, while backend Kokoro/Piper remains optional.
 
-```text
-./.venv/bin/pytest -q
-57 passed, 3 warnings
-```
+## Known Boundaries
 
-- HTTP smoke: `GET /health` returned `200`.
-- WebSocket smoke: audio connection accepted and `ping` returned `pong`.
-- Video evidence: 46 seconds, 1280x720, generated from local Chromium captures.
-- No automated end-to-end browser test is claimed. The test suite covers application contracts and service behavior, not a full browser-driven call.
-
-## Risks and Boundaries
-
-- This is a prototype and not a medical device or clinical decision substitute.
-- Local STT needs `faster-whisper`, model weights, CPU, disk, and a first download.
-- Groq paths need a valid `GROQ_API_KEY`, network access, and provider availability.
+- This is a prototype, not a medical device or clinical decision substitute.
 - The sample voice route uses synthetic case context rather than authenticated patient data.
+- Local STT requires model weights, CPU, disk, and a first download. `small` costs more time and resources than `tiny`.
+- Groq paths require a valid `GROQ_API_KEY`, network access, and provider availability.
+- Automatic VAD/segmentation, telephony, and a production barge-in experience are outside the demonstrated flow.
 - Process-local rate limiting does not provide shared protection across workers.
 - ChromaDB is local persistent storage, not a multi-user production data platform.
-- Optional TTS can return silent mock WAV data if model assets are absent.
-- Authentication, authorization, audit retention, encryption, observability, clinical validation, and regulatory work are outside this repository.
+- Authentication, authorization, audit retention, encryption, observability, clinical validation, and regulatory work remain outside this repository.
 
-## Final Checklist
+## Public Artifact Checklist
 
-- [x] README documents the supported setup, exact manual voice flow, limits, and security boundaries.
-- [x] Architecture diagram reflects local Faster-Whisper, manual turns, browser `speechSynthesis`, and optional Groq.
-- [x] 57-test validation recorded.
-- [x] HTTP health smoke returned 200.
-- [x] WebSocket audio and ping-pong smoke completed.
-- [x] Video evidence generated at 46 seconds and 1280x720.
-- [x] No automated browser E2E integration is represented as completed.
-- [x] [MIT License](LICENSE) and [.env.example](.env.example) are referenced.
+- [x] **Repository:** implementation, setup documentation, limits, and security boundaries are present.
+- [x] **Diagram:** component architecture, clinical decision flow, contracts, evidence status, and limits are documented in [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md).
+- [x] **Report:** development evidence, configuration, validation, decisions, and known boundaries are summarized here.
+- [x] **Video:** `demo/postop-voice-agent-demo.mp4` exists and is 46 seconds at 1280x720; it demonstrates the manual browser flow but is not automated E2E proof or clinical validation.
+
+Additional repository terms are defined in [LICENSE](LICENSE), and setup variables are described in [.env.example](.env.example).
