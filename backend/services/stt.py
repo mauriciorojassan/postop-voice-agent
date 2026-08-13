@@ -1,6 +1,6 @@
 import logging
 import os
-from io import BytesIO
+import tempfile
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -55,15 +55,18 @@ class STTService:
                 self._local_model = WhisperModel(
                     self.local_model_name, device="cpu", compute_type="int8"
                 )
-            segments, _ = self._local_model.transcribe(BytesIO(audio_bytes), language="es")
+            with tempfile.NamedTemporaryFile(suffix=".webm") as audio_file:
+                audio_file.write(audio_bytes)
+                audio_file.flush()
+                segments, _ = self._local_model.transcribe(audio_file.name, language="es")
             return " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
         except ImportError as exc:
             raise RuntimeError(
                 "STT local requiere faster-whisper. Instala requirements.txt y vuelve a intentar."
             ) from exc
         except Exception as exc:
-            logger.error("Local STT transcription error: %s", exc)
+            logger.exception("Local STT transcription error: %r", exc)
             raise RuntimeError(
-                f"No se pudo cargar/transcribir el modelo local '{self.local_model_name}'. "
-                "Verifica la instalación y el acceso a la descarga inicial del modelo."
+                f"No se pudo transcribir el audio WebM con el modelo local '{self.local_model_name}'. "
+                "Verifica que faster-whisper esté instalado, que el modelo esté disponible y que el audio sea WebM válido."
             ) from exc
