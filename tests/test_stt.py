@@ -31,11 +31,13 @@ def test_local_extracts_segment_text():
             self.text = text
 
     class Model:
-        def transcribe(self, audio, language):
+        def transcribe(self, audio, language, **kwargs):
             assert audio.endswith(".webm")
             with open(audio, "rb") as audio_file:
                 assert audio_file.read() == b"real webm"
             assert language == "es"
+            assert kwargs["vad_filter"] is True
+            assert kwargs["condition_on_previous_text"] is False
             return iter([Segment(" hola "), Segment("mundo")]), object()
 
     service = STTService(provider="local")
@@ -47,7 +49,7 @@ def test_local_cleans_up_temporary_webm_file():
     seen_path = None
 
     class Model:
-        def transcribe(self, audio, language):
+        def transcribe(self, audio, language, **kwargs):
             nonlocal seen_path
             seen_path = audio
             assert audio.endswith(".webm")
@@ -56,6 +58,7 @@ def test_local_cleans_up_temporary_webm_file():
 
     service = STTService(provider="local")
     service._local_model = Model()
-    assert service.transcribe(b"real webm", "audio.webm") == ""
+    with pytest.raises(RuntimeError, match="No se detectó voz"):
+        service.transcribe(b"real webm", "audio.webm")
     assert seen_path is not None
     assert not os.path.exists(seen_path)

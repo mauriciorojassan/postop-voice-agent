@@ -17,6 +17,10 @@ _CONNECTION_TRACKER: Dict[str, list] = []
 MAX_CONNECTIONS_PER_SEC = 10
 MIN_AUDIO_BYTES = 4096
 
+
+def _is_disconnect_error(error: Exception) -> bool:
+    return isinstance(error, WebSocketDisconnect) or "disconnect" in str(error).lower()
+
 def check_rate_limit(client_ip: str) -> bool:
     global _CONNECTION_TRACKER
     now = time.time()
@@ -114,11 +118,14 @@ async def voice_websocket_endpoint(
                 elif text_data == "ping":
                     await websocket.send_text("pong")
 
-    except WebSocketDisconnect:
-        disconnected = True
-        logger.info(f"WebSocket disconnected for caso_id={caso_id}")
+    except (WebSocketDisconnect, RuntimeError) as e:
+        if _is_disconnect_error(e):
+            disconnected = True
+            logger.info(f"WebSocket disconnected for caso_id={caso_id}")
+        else:
+            logger.exception("WebSocket error: %r", e)
     except Exception as e:
-        if str(e) == "Cannot call receive once disconnect":
+        if _is_disconnect_error(e):
             disconnected = True
             logger.info(f"WebSocket disconnected for caso_id={caso_id}")
         else:
@@ -186,14 +193,18 @@ async def handle_voice_turn(
     except asyncio.CancelledError:
         logger.info("Voice turn processing cancelled due to barge-in.")
         raise
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected while processing voice turn.")
+    except (WebSocketDisconnect, RuntimeError) as e:
+        if _is_disconnect_error(e):
+            logger.info("WebSocket disconnected while processing voice turn.")
+        else:
+            logger.exception("Error handling voice turn: %r", e)
     except Exception as e:
         logger.exception("Error handling voice turn: %r", e)
         try:
             message = str(e) or "No se pudo procesar el audio. Revisa que sea WebM válido e inténtalo de nuevo."
             await websocket.send_json({"event": "error", "message": message})
-        except WebSocketDisconnect:
-            logger.info("WebSocket disconnected while reporting voice turn error.")
+        except (WebSocketDisconnect, RuntimeError) as send_error:
+            if not _is_disconnect_error(send_error):
+                logger.exception("Error reporting voice turn error: %r", send_error)
         except Exception:
             pass

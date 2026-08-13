@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from backend.routers.voice import MIN_AUDIO_BYTES, handle_voice_turn
 from backend.services.stt import STTService
@@ -91,3 +92,21 @@ def test_voice_turn_skips_audio_below_container_threshold():
         "event": "error",
         "message": "Audio insuficiente para transcribir."
     }]
+
+
+def test_voice_turn_disconnect_is_normal(caplog):
+    class DisconnectedWebSocket:
+        async def send_json(self, _message):
+            raise RuntimeError("Cannot call send once disconnect")
+
+    class FakeSTT:
+        def transcribe(self, *_args):
+            return "me siento bien"
+
+    with caplog.at_level(logging.ERROR):
+        asyncio.run(handle_voice_turn(
+            DisconnectedWebSocket(), FakeSTT(), None, None,
+            b"audio" * MIN_AUDIO_BYTES, "audio.webm"
+        ))
+
+    assert "Error handling voice turn" not in caplog.text

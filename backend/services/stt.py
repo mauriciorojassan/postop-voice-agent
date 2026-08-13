@@ -58,12 +58,28 @@ class STTService:
             with tempfile.NamedTemporaryFile(suffix=".webm") as audio_file:
                 audio_file.write(audio_bytes)
                 audio_file.flush()
-                segments, _ = self._local_model.transcribe(audio_file.name, language="es")
-            return " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
+                segments, _ = self._local_model.transcribe(
+                    audio_file.name,
+                    language="es",
+                    vad_filter=True,
+                    vad_parameters={"min_silence_duration_ms": 500},
+                    condition_on_previous_text=False,
+                    beam_size=1,
+                    temperature=0.0,
+                    no_speech_threshold=0.6,
+                )
+            transcript = " ".join(
+                segment.text.strip() for segment in segments if segment.text.strip()
+            ).strip()
+            if not transcript:
+                raise RuntimeError("No se detectó voz. Habla más cerca del micrófono e inténtalo de nuevo.")
+            return transcript
         except ImportError as exc:
             raise RuntimeError(
                 "STT local requiere faster-whisper. Instala requirements.txt y vuelve a intentar."
             ) from exc
+        except RuntimeError:
+            raise
         except Exception as exc:
             logger.exception("Local STT transcription error: %r", exc)
             raise RuntimeError(

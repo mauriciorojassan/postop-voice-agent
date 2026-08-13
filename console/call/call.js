@@ -97,6 +97,7 @@ async function startCall() {
 
 async function setupMicrophone() {
     recorderStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    statusCard.textContent = 'Micrófono activo';
     startRecorderSegment();
 }
 
@@ -120,6 +121,7 @@ function startRecorderSegment() {
 
     // Each segment is independently finalized before the server transcribes it.
     mediaRecorder.start(1000);
+    statusCard.textContent = 'Micrófono activo';
     setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
     }, 3000);
