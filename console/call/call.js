@@ -3,6 +3,10 @@ let mediaRecorder = null;
 let audioContext = null;
 let audioQueue = [];
 let isPlaying = false;
+let recorderStream = null;
+let pendingAudioSends = Promise.resolve();
+let endingCall = false;
+let lastSpokenResponse = '';
 
 const startBtn = document.getElementById('start-btn');
 const endBtn = document.getElementById('end-btn');
@@ -23,6 +27,7 @@ function logMessage(sender, text, isAlert = false) {
 
 async function startCall() {
     try {
+        endingCall = false;
         statusCard.className = 'mb-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-center font-medium';
         statusCard.textContent = 'Conectando llamada...';
 
@@ -56,6 +61,11 @@ async function startCall() {
                         const isRed = data.triage_level === 'rojo';
                         logMessage('Asistente (Doctor)', data.text, isRed);
                         updateTriage(data.triage_level);
+                        speakResponse(data.text);
+                    } else if (data.event === 'error') {
+                        logMessage('Sistema', data.message || 'Error del backend.', true);
+                        statusCard.className = 'mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-center font-medium';
+                        statusCard.textContent = data.message || 'Error del backend';
                     } else if (data.event === 'barge_in') {
                         stopAudioPlayback();
                         logMessage('Sistema', 'Interrupción detectada (Barge-in).', true);
@@ -86,32 +96,48 @@ async function startCall() {
 }
 
 async function setupMicrophone() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    recorderStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    startRecorderSegment();
+}
+
+function startRecorderSegment() {
+    mediaRecorder = new MediaRecorder(recorderStream, { mimeType: 'audio/webm' });
 
     mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
-            // Send audio chunk over WebSocket
-            event.data.arrayBuffer().then(buffer => {
-                ws.send(buffer);
+            pendingAudioSends = pendingAudioSends.then(() => event.data.arrayBuffer()).then(buffer => {
+                if (ws && ws.readyState === WebSocket.OPEN) ws.send(buffer);
             });
         }
     };
 
-    // Capture audio in 250ms chunks for real-time streaming
-    mediaRecorder.start(250);
+    mediaRecorder.onstop = () => {
+        pendingAudioSends.then(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send('EOT');
+            if (!endingCall) startRecorderSegment();
+        });
+    };
+
+    // Each segment is independently finalized before the server transcribes it.
+    mediaRecorder.start(1000);
+    setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    }, 3000);
 }
 
 function endCall(sendClose = true) {
+    endingCall = true;
+    const socket = ws;
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        recorderStream.getTracks().forEach(track => track.stop());
     }
     if (ws && sendClose) {
-        ws.close();
+        pendingAudioSends.then(() => socket && socket.close());
     }
-    ws = null;
     mediaRecorder = null;
+    recorderStream = null;
+    if (!sendClose) ws = null;
 
     statusCard.className = 'mb-6 p-4 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-center font-medium';
     statusCard.textContent = 'Llamada finalizada';
@@ -161,6 +187,18 @@ function stopAudioPlayback() {
         audioContext.close();
         audioContext = null;
     }
+}
+
+function speakResponse(text) {
+    if (!text || text === lastSpokenResponse || !window.speechSynthesis) return;
+    lastSpokenResponse = text;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find(voice => voice.lang.toLowerCase() === 'es-co') ||
+        voices.find(voice => voice.lang.toLowerCase().startsWith('es')) || null;
+    utterance.lang = utterance.voice?.lang || 'es-CO';
+    window.speechSynthesis.speak(utterance);
 }
 
 function updateTriage(level) {
