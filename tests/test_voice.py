@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from backend.routers.voice import MIN_AUDIO_BYTES, handle_voice_turn
+from backend.routers.voice import handle_voice_turn
 from backend.services.stt import STTService
 
 
@@ -68,15 +68,37 @@ def test_voice_turn_passes_filename_to_stt():
             }
 
     stt = FakeSTT()
-    asyncio.run(handle_voice_turn(FakeWebSocket(), stt, FakeTTS(), FakeConversation(), b"audio" * MIN_AUDIO_BYTES, "audio.webm"))
+    asyncio.run(handle_voice_turn(FakeWebSocket(), stt, FakeTTS(), FakeConversation(), b"audio", "audio.webm"))
 
     assert stt.filename == "audio.webm"
 
 
-def test_voice_turn_skips_audio_below_container_threshold():
+def test_voice_turn_transcribes_small_webm_payload():
+    class FakeSTT:
+        def __init__(self):
+            self.called = False
+
+        def transcribe(self, *_args):
+            self.called = True
+            return "me siento bien"
+
+    class FakeWebSocket:
+        def __init__(self):
+            self.json_messages = []
+
+        async def send_json(self, message):
+            self.json_messages.append(message)
+
+    stt = FakeSTT()
+    asyncio.run(handle_voice_turn(FakeWebSocket(), stt, None, None, b"\x1a\x45\xdf\xa3", "audio.webm"))
+
+    assert stt.called
+
+
+def test_voice_turn_rejects_empty_audio():
     class FakeSTT:
         def transcribe(self, *_args):
-            raise AssertionError("small buffers must not reach STT")
+            raise AssertionError("empty buffers must not reach STT")
 
     class FakeWebSocket:
         def __init__(self):
@@ -86,11 +108,11 @@ def test_voice_turn_skips_audio_below_container_threshold():
             self.json_messages.append(message)
 
     websocket = FakeWebSocket()
-    asyncio.run(handle_voice_turn(websocket, FakeSTT(), None, None, b"x" * (MIN_AUDIO_BYTES - 1), "audio.webm"))
+    asyncio.run(handle_voice_turn(websocket, FakeSTT(), None, None, b"", "audio.webm"))
 
     assert websocket.json_messages == [{
         "event": "error",
-        "message": "Audio insuficiente para transcribir."
+        "message": "No se recibió audio para transcribir."
     }]
 
 
@@ -106,7 +128,7 @@ def test_voice_turn_disconnect_is_normal(caplog):
     with caplog.at_level(logging.ERROR):
         asyncio.run(handle_voice_turn(
             DisconnectedWebSocket(), FakeSTT(), None, None,
-            b"audio" * MIN_AUDIO_BYTES, "audio.webm"
+            b"audio", "audio.webm"
         ))
 
     assert "Error handling voice turn" not in caplog.text

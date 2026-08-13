@@ -15,7 +15,6 @@ router = APIRouter()
 # Rate limiting storage: IP -> list of connection timestamps
 _CONNECTION_TRACKER: Dict[str, list] = []
 MAX_CONNECTIONS_PER_SEC = 10
-MIN_AUDIO_BYTES = 4096
 
 
 def _is_disconnect_error(error: Exception) -> bool:
@@ -96,7 +95,7 @@ async def voice_websocket_endpoint(
             elif "text" in message and message["text"]:
                 text_data = message["text"]
                 if text_data == "EOT" or text_data == "stop_speaking":
-                    if len(audio_buffer) >= MIN_AUDIO_BYTES:
+                    if audio_buffer:
                         # EOT is the container boundary; never transcribe a size-based prefix.
                         if current_response_task and not current_response_task.done():
                             audio_buffer.clear()
@@ -106,11 +105,10 @@ async def voice_websocket_endpoint(
                         current_response_task = asyncio.create_task(
                             handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes, "audio.webm")
                         )
-                    elif audio_buffer:
-                        audio_buffer.clear()
+                    else:
                         await websocket.send_json({
                             "event": "error",
-                            "message": "Audio insuficiente para transcribir; intenta hablar un poco más."
+                            "message": "No se recibió audio para transcribir."
                         })
                 elif text_data == "ping":
                     await websocket.send_text("pong")
@@ -153,10 +151,10 @@ async def handle_voice_turn(
     filename: str
 ):
     try:
-        if len(audio_bytes) < MIN_AUDIO_BYTES:
+        if not audio_bytes:
             await websocket.send_json({
                 "event": "error",
-                "message": "Audio insuficiente para transcribir."
+                "message": "No se recibió audio para transcribir."
             })
             return
 
