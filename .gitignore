@@ -2,6 +2,7 @@ venv/
 .venv_py11/
 .venv_py12/
 .env
+video/
 *.pdf
 __pycache__/
 .pytest_cache/
