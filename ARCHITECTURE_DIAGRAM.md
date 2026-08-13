@@ -106,4 +106,4 @@ flowchart TD
 - **Cylinder**: persistent local storage.
 - `rojo`: red-flag escalation; `amarillo`: priority handoff after repeated ambiguity.
 
-Related setup and operational details are in [README.md](README.md), and the review-oriented evidence is in [FINAL_REPORT.md](FINAL_REPORT.md).
+Related setup and operational details are in [README.md](README.md), and the review-oriented evidence is in [Informe_Final.md](Informe_Final.md).

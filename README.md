@@ -114,7 +114,7 @@ eval/                    Dataset evaluation runner
 tests/                   Unit and integration tests
 textos/                  Local document registry and knowledge assets
 README.md               Project entry point
-FINAL_REPORT.md         Technical report and validation record
+Informe_Final.md        Final report and validation record
 ARCHITECTURE_DIAGRAM.md System diagram and flow explanation
 ```
 
@@ -127,7 +127,7 @@ ARCHITECTURE_DIAGRAM.md System diagram and flow explanation
 
 ## Project Artifacts
 
-- [Technical report](FINAL_REPORT.md)
+- [Final report](Informe_Final.md)
 - [Architecture diagram](ARCHITECTURE_DIAGRAM.md)
 - [Demo instructions and scope](demo/README.md)
 - [Local demo video](demo/postop-voice-agent-demo.mp4)
