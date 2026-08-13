@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This repository contains a FastAPI application for post-operative patient follow-up in Colombian Spanish. It combines a bidirectional voice WebSocket, speech-to-text, adaptive conversation state, deterministic clinical red-flag escalation, optional Llama-based triage, local text-to-speech, and an administrative knowledge console backed by ChromaDB.
+This repository contains a FastAPI application for post-operative patient follow-up in Colombian Spanish. The reproducible demo is a web microphone call: real `audio.webm` travels over WebSocket to local Faster-Whisper, the response is returned as text, and Chrome/Chromium speaks it with `speechSynthesis`. It is not real telephony.
 
-The verified test result is **48 passed** using the repository virtual environment. This is a prototype and must not replace assessment or instructions from qualified clinical staff.
+The verified test result is **55 passed** using the repository virtual environment. This is a prototype and must not replace assessment or instructions from qualified clinical staff.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and dat
 | Area | Model or tool | Role |
 |---|---|---|
 | Web service | FastAPI, Uvicorn | HTTP, WebSocket, static console, and health endpoint |
-| STT | Groq Whisper Large V3 | Spanish audio transcription with post-operative vocabulary prompting |
+| STT | Faster-Whisper, CPU/int8 by default; Groq optional | Real Spanish `audio.webm` transcription with no simulated fallback |
 | Triage reasoning | Llama 3 through Groq, optional | Contextual triage when a Groq client is configured |
 | Safety floor | Python regex and threshold rules | Synchronous red-flag detection and one-way escalation to `rojo` |
 | Retrieval | BGE-M3, ChromaDB | Multilingual embeddings and persistent local document retrieval |
@@ -45,13 +45,13 @@ See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and dat
    pip install -r requirements.txt
    ```
 
-3. Create local configuration from the checked-in template:
+3. Create local configuration from the checked-in template (Linux is the supported route):
 
    ```bash
    cp .env.example .env
    ```
 
-   Set `GROQ_API_KEY` only when live Groq STT or reasoning is required. Do not commit `.env` or credentials.
+   `STT_PROVIDER=local` is the default and `LOCAL_WHISPER_MODEL=small` downloads on first transcription. Chrome/Chromium must be granted microphone permission. Set `STT_PROVIDER=groq` and a real `GROQ_API_KEY` only for the optional remote provider. Do not commit `.env` or credentials.
 
 4. Start the service:
 
@@ -66,7 +66,7 @@ See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and dat
    .venv/bin/pytest -q
    ```
 
-   Expected test result: `48 passed`.
+   Expected test result: `55 passed`.
 
    Available interfaces are `http://localhost:8000/docs`, `http://localhost:8000/admin`, and the call surface at `http://localhost:8000/call`.
 
@@ -76,7 +76,7 @@ Command executed from the repository root:
 
 ```text
 ./.venv/bin/pytest -q
-48 passed, 15 warnings in 19.23s
+55 passed, 3 warnings in 42.30s
 ```
 
 The warnings are dependency deprecation warnings and did not fail the suite. Running the system `pytest` outside the project virtual environment is not a valid project verification because required packages such as ChromaDB and pandas are unavailable there.
@@ -85,6 +85,8 @@ The warnings are dependency deprecation warnings and did not fail the suite. Run
 
 - The application is a prototype and is not a medical device or a substitute for professional clinical judgment.
 - Live Groq behavior requires a valid `GROQ_API_KEY`, network access, and provider availability.
+- Local STT requires installing `faster-whisper` and an initial model download; if unavailable, the backend returns an actionable error instead of fake text.
+- The browser voice demo requires Chrome/Chromium microphone permission and uses WebSocket, not telephone infrastructure.
 - The default voice route uses a sample trajectory snapshot; production deployment requires authenticated patient and case data handling.
 - Rate limiting is process-local and should be replaced with shared protection for multiple workers or public deployment.
 - ChromaDB is local persistent storage; it is not configured as a multi-user production data platform.
