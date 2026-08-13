@@ -131,5 +131,5 @@ ARCHITECTURE_DIAGRAM.md System diagram and flow explanation
 - [Architecture diagram](ARCHITECTURE_DIAGRAM.md)
 - [Demo instructions and scope](demo/README.md)
 - [Local demo video](demo/postop-voice-agent-demo.mp4)
-- [Unlisted video](https://youtu.be/RGncO51IokA)
+- [Unlisted video](https://youtu.be/NmvVNATmwmo)
 - [MIT License](LICENSE)

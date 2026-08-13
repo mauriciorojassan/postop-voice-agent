@@ -45,4 +45,4 @@ ffprobe -v error -show_entries format=duration,size \
   demo/postop-voice-agent-demo.mp4
 ```
 
-The video is also available as an [unlisted YouTube link](https://youtu.be/RGncO51IokA).
+The video is also available as an [unlisted YouTube link](https://youtu.be/NmvVNATmwmo).
