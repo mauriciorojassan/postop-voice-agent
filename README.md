@@ -4,7 +4,9 @@ An enterprise-grade, real-time bidirectional voice assistant for post-operative 
 
 ---
 
-## 15-Minute Reproducible Setup
+## Linux Demo: Real Microphone Voice Loop
+
+The supported route is Linux with `STT_PROVIDER=local`: real browser microphone audio (`audio.webm`) goes through the WebSocket to Faster-Whisper, then the response is spoken by the browser. This is not real telephony; it is a web call using a microphone and WebSocket.
 
 ### 1. Clone & Virtual Environment
 ```bash
@@ -23,16 +25,18 @@ pip install -r requirements.txt
 ### 3. Environment Configuration
 ```bash
 cp .env.example .env
-# Populate GROQ_API_KEY=gsk_... in .env
+# Local STT is the default. Groq is optional.
 ```
 
-### 4. Model & Vector Store Initialization
-Embeddings (BGE-M3) and TTS weights (Kokoro-82M / Piper) auto-download upon first initialization.
+### 4. Initial Model Download
+`faster-whisper` runs on CPU with int8. The `small` model downloads on first local transcription, so the first turn needs network access and disk space. Set `LOCAL_WHISPER_MODEL=tiny` for a lighter demo. Tests do not download models.
 
 ### 5. Run Application
 ```bash
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+Open `http://localhost:8000/call` in Chrome/Chromium and allow microphone permission. Browser Speech Synthesis is the base audible response path; WAV audio from the backend remains supported when available. Groq can be selected with `STT_PROVIDER=groq` and a real `GROQ_API_KEY`.
 
 ### 6. Verify Operational State
 - Health check: `curl -s http://localhost:8000/health`
@@ -45,7 +49,7 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 | Component | Model / Technology | Rationale |
 |---|---|---|
-| **Speech-to-Text (STT)** | Groq Whisper Large V3 | Ultra-low latency (<150ms transcription) with regional Colombian Spanish vocabulary prompting (`capa2_ruidosa`). |
+| **Speech-to-Text (STT)** | Faster-Whisper local CPU/int8 by default; Groq optional | Real Spanish transcription from `audio.webm`; no fake transcript fallback. |
 | **Reasoning & Triage** | Llama 3 via Groq API | High-speed inference adhering strictly to the allowed model family with zero cold-start overhead. |
 | **Embeddings** | BGE-M3 (`BAAI/bge-m3`) | State-of-the-art multi-lingual embedding model optimized for Spanish clinical text retrieval. |
 | **Vector Store** | ChromaDB (Local Persistent) | Zero external server dependency, fast metadata filtering, and metadata-hashed version purging. |
