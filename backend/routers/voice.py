@@ -72,6 +72,7 @@ async def voice_websocket_endpoint(
     audio_buffer = bytearray()
     current_response_task: Optional[asyncio.Task] = None
     idle_timeout = 60.0 # 60 seconds idle timeout
+    disconnected = False
 
     try:
         while True:
@@ -114,22 +115,29 @@ async def voice_websocket_endpoint(
                     await websocket.send_text("pong")
 
     except WebSocketDisconnect:
+        disconnected = True
         logger.info(f"WebSocket disconnected for caso_id={caso_id}")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        if str(e) == "Cannot call receive once disconnect":
+            disconnected = True
+            logger.info(f"WebSocket disconnected for caso_id={caso_id}")
+        else:
+            logger.exception("WebSocket error: %r", e)
     finally:
         if current_response_task and not current_response_task.done():
             current_response_task.cancel()
         
-        # Send final call summary JSON on close if summary was generated
-        summary = conv_manager._build_summary("Sesión finalizada por desconexión.")
-        try:
-            await websocket.send_json({
-                "event": "call_summary",
-                "summary": summary.dict() if hasattr(summary, "dict") else summary
-            })
-        except Exception:
-            pass
+        if not disconnected:
+            summary = conv_manager._build_summary("Sesión finalizada por desconexión.")
+            try:
+                await websocket.send_json({
+                    "event": "call_summary",
+                    "summary": summary.dict() if hasattr(summary, "dict") else summary
+                })
+            except WebSocketDisconnect:
+                logger.info(f"WebSocket disconnected while closing caso_id={caso_id}")
+            except Exception:
+                pass
         logger.info(f"Closed voice WebSocket for caso_id={caso_id}. Final triage: {conv_manager.final_triage}")
 
 async def handle_voice_turn(
@@ -178,9 +186,14 @@ async def handle_voice_turn(
     except asyncio.CancelledError:
         logger.info("Voice turn processing cancelled due to barge-in.")
         raise
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected while processing voice turn.")
     except Exception as e:
-        logger.error(f"Error handling voice turn: {e}")
+        logger.exception("Error handling voice turn: %r", e)
         try:
-            await websocket.send_json({"event": "error", "message": str(e)})
+            message = str(e) or "No se pudo procesar el audio. Revisa que sea WebM válido e inténtalo de nuevo."
+            await websocket.send_json({"event": "error", "message": message})
+        except WebSocketDisconnect:
+            logger.info("WebSocket disconnected while reporting voice turn error.")
         except Exception:
             pass
