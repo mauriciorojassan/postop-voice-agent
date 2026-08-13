@@ -99,11 +99,8 @@ async def voice_websocket_endpoint(
                     if len(audio_buffer) >= MIN_AUDIO_BYTES:
                         # EOT is the container boundary; never transcribe a size-based prefix.
                         if current_response_task and not current_response_task.done():
-                            current_response_task.cancel()
-                            try:
-                                await current_response_task
-                            except asyncio.CancelledError:
-                                pass
+                            audio_buffer.clear()
+                            continue
                         utterance_bytes = bytes(audio_buffer)
                         audio_buffer.clear()
                         current_response_task = asyncio.create_task(

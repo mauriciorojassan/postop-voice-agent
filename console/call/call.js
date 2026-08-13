@@ -4,12 +4,13 @@ let audioContext = null;
 let audioQueue = [];
 let isPlaying = false;
 let recorderStream = null;
-let pendingAudioSends = Promise.resolve();
 let endingCall = false;
 let lastSpokenResponse = '';
 
 const startBtn = document.getElementById('start-btn');
 const endBtn = document.getElementById('end-btn');
+const recordBtn = document.getElementById('record-btn');
+const sendBtn = document.getElementById('send-btn');
 const statusCard = document.getElementById('status-card');
 const logContainer = document.getElementById('log-container');
 const triageBadge = document.getElementById('triage-badge');
@@ -62,10 +63,12 @@ async function startCall() {
                         logMessage('Asistente (Doctor)', data.text, isRed);
                         updateTriage(data.triage_level);
                         speakResponse(data.text);
+                        setStatus('Respuesta recibida');
+                        setTurnButtons(true, false);
                     } else if (data.event === 'error') {
                         logMessage('Sistema', data.message || 'Error del backend.', true);
-                        statusCard.className = 'mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-center font-medium';
-                        statusCard.textContent = data.message || 'Error del backend';
+                        setStatus('Listo para escuchar');
+                        setTurnButtons(true, false);
                     } else if (data.event === 'barge_in') {
                         stopAudioPlayback();
                         logMessage('Sistema', 'Interrupción detectada (Barge-in).', true);
@@ -97,45 +100,68 @@ async function startCall() {
 
 async function setupMicrophone() {
     recorderStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    statusCard.textContent = 'Micrófono activo';
-    startRecorderSegment();
+    setStatus('Listo para escuchar');
+    setTurnButtons(true, false);
 }
 
-function startRecorderSegment() {
+function setStatus(text) {
+    statusCard.textContent = text;
+}
+
+function setTurnButtons(canRecord, canSend) {
+    recordBtn.disabled = !canRecord;
+    sendBtn.disabled = !canSend;
+    recordBtn.classList.toggle('opacity-50', !canRecord);
+    recordBtn.classList.toggle('cursor-not-allowed', !canRecord);
+    sendBtn.classList.toggle('opacity-50', !canSend);
+    sendBtn.classList.toggle('cursor-not-allowed', !canSend);
+}
+
+function startRecording() {
+    if (!recorderStream || !ws || ws.readyState !== WebSocket.OPEN || mediaRecorder) return;
+
     mediaRecorder = new MediaRecorder(recorderStream, { mimeType: 'audio/webm' });
+    const chunks = [];
 
     mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
-            pendingAudioSends = pendingAudioSends.then(() => event.data.arrayBuffer()).then(buffer => {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+        try {
+            for (const chunk of chunks) {
+                const buffer = await chunk.arrayBuffer();
                 if (ws && ws.readyState === WebSocket.OPEN) ws.send(buffer);
-            });
+            }
+            if (!endingCall && ws && ws.readyState === WebSocket.OPEN) ws.send('EOT');
+        } finally {
+            mediaRecorder = null;
+            if (endingCall && ws && ws.readyState === WebSocket.OPEN) ws.close();
         }
     };
 
-    mediaRecorder.onstop = () => {
-        pendingAudioSends.then(() => {
-            if (ws && ws.readyState === WebSocket.OPEN) ws.send('EOT');
-            if (!endingCall) startRecorderSegment();
-        });
-    };
+    mediaRecorder.start();
+    setStatus('Grabando...');
+    setTurnButtons(false, true);
+}
 
-    // Each segment is independently finalized before the server transcribes it.
-    mediaRecorder.start(1000);
-    statusCard.textContent = 'Micrófono activo';
-    setTimeout(() => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-    }, 3000);
+function sendRecording() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    setStatus('Procesando...');
+    setTurnButtons(false, false);
+    mediaRecorder.stop();
 }
 
 function endCall(sendClose = true) {
     endingCall = true;
     const socket = ws;
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    const wasRecording = mediaRecorder && mediaRecorder.state !== 'inactive';
+    if (wasRecording) {
         mediaRecorder.stop();
         recorderStream.getTracks().forEach(track => track.stop());
     }
-    if (ws && sendClose) {
-        pendingAudioSends.then(() => socket && socket.close());
+    if (ws && sendClose && !wasRecording) {
+        socket.close();
     }
     mediaRecorder = null;
     recorderStream = null;
@@ -147,6 +173,7 @@ function endCall(sendClose = true) {
     startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     endBtn.disabled = true;
     endBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    setTurnButtons(false, false);
 }
 
 function queueAudio(arrayBuffer) {
