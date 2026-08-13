@@ -15,6 +15,7 @@ router = APIRouter()
 # Rate limiting storage: IP -> list of connection timestamps
 _CONNECTION_TRACKER: Dict[str, list] = []
 MAX_CONNECTIONS_PER_SEC = 10
+MIN_AUDIO_BYTES = 4096
 
 def check_rate_limit(client_ip: str) -> bool:
     global _CONNECTION_TRACKER
@@ -87,30 +88,11 @@ async def voice_websocket_endpoint(
                 chunk = message["bytes"]
                 audio_buffer.extend(chunk)
 
-                # If buffer accumulates enough audio (e.g. > 16KB or end of utterance marker), process turn
-                # For streaming responsiveness, or when client sends stop/utterance delimiter
-                if len(audio_buffer) >= 8192:
-                    # Barge-in: if agent is currently speaking/generating, cancel current response task
-                    if current_response_task and not current_response_task.done():
-                        logger.info("Barge-in detected: cancelling in-flight agent response task.")
-                        current_response_task.cancel()
-                        try:
-                            await current_response_task
-                        except asyncio.CancelledError:
-                            pass
-                        await websocket.send_json({"event": "barge_in", "message": "Respuesta anterior interrumpida."})
-
-                    # Run processing in background task to allow interruption
-                    utterance_bytes = bytes(audio_buffer)
-                    audio_buffer.clear()
-                    current_response_task = asyncio.create_task(
-                        handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes, "audio.webm")
-                    )
-
             elif "text" in message and message["text"]:
                 text_data = message["text"]
                 if text_data == "EOT" or text_data == "stop_speaking":
-                    if audio_buffer:
+                    if len(audio_buffer) >= MIN_AUDIO_BYTES:
+                        # EOT is the container boundary; never transcribe a size-based prefix.
                         if current_response_task and not current_response_task.done():
                             current_response_task.cancel()
                             try:
@@ -122,6 +104,12 @@ async def voice_websocket_endpoint(
                         current_response_task = asyncio.create_task(
                             handle_voice_turn(websocket, stt_service, tts_service, conv_manager, utterance_bytes, "audio.webm")
                         )
+                    elif audio_buffer:
+                        audio_buffer.clear()
+                        await websocket.send_json({
+                            "event": "error",
+                            "message": "Audio insuficiente para transcribir; intenta hablar un poco más."
+                        })
                 elif text_data == "ping":
                     await websocket.send_text("pong")
 
@@ -153,6 +141,13 @@ async def handle_voice_turn(
     filename: str
 ):
     try:
+        if len(audio_bytes) < MIN_AUDIO_BYTES:
+            await websocket.send_json({
+                "event": "error",
+                "message": "Audio insuficiente para transcribir."
+            })
+            return
+
         # 1. STT Transcription
         transcript = stt_service.transcribe(audio_bytes, filename)
         logger.info(f"Transcribed patient speech: {transcript}")
