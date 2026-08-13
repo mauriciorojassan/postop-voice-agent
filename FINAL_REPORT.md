@@ -1,110 +1,100 @@
-# Post-Operative Voice Follow-Up Agent
+# Technical Report: Post-Operative Voice Follow-Up Agent
 
 ## Executive Summary
 
-This repository contains a FastAPI application for post-operative patient follow-up in Colombian Spanish. The reproducible demo is a web microphone call: real `audio.webm` travels over WebSocket to local Faster-Whisper, the response is returned as text, and Chrome/Chromium speaks it with `speechSynthesis`. It is not real telephony.
+This repository implements a FastAPI prototype for post-operative follow-up in Colombian Spanish. Its demonstrated interaction is a browser microphone call: the user records a manual turn, sends `audio.webm` through a WebSocket, receives a transcript and structured response, and hears the answer through browser `speechSynthesis`. It is not telephony and must not replace qualified clinical judgment.
 
-The verified test result is **57 passed** using `.venv` on Linux with Python 3.12. This is a prototype and must not replace assessment or instructions from qualified clinical staff.
+The current validation record contains **57 passing tests**, an HTTP health smoke check returning **200**, a WebSocket audio and ping-pong check, and a **46-second, 1280x720** video evidence recording.
 
 ## Architecture
 
-The application is a single Python/FastAPI service with two primary surfaces:
+The service exposes four relevant interfaces:
 
-- `/ws/voice`: accepts manually submitted audio turns, transcribes them, processes a conversation turn, returns structured events and synthesized audio, and emits a call summary.
-- `/api/documents`: uploads, lists, and deletes PDF knowledge documents. Uploads are validated, extracted, chunked, embedded, and stored in persistent ChromaDB.
+- `/call`: browser call surface using microphone capture and manual turns.
+- `/ws/voice`: WebSocket endpoint for audio bytes, `EOT` turn boundaries, structured events, and `ping`/`pong`.
+- `/api/documents`: PDF upload, listing, and deletion for the local RAG store.
+- `/health`, `/admin`, and `/docs`: health, administration, and interactive API documentation.
 
-The voice path uses `ConversationManager` to progress through pain, fever, mobility, wound, appetite, and sleep domains. `EscalationEngine` evaluates each utterance before normal progression. Its deterministic safety floor can force `rojo`; optional Groq/Llama reasoning can provide contextual triage but cannot lower a safety-floor escalation. Ambiguous replies receive clarification, and repeated ambiguity is handed off as `amarillo`.
+The voice path is `audio.webm` -> local Faster-Whisper -> `ConversationManager` -> deterministic `EscalationEngine` -> optional Groq reasoning -> response event. The browser's `speechSynthesis` is the primary audible response in the demo. Optional backend Kokoro/Piper TTS remains available through `TTSService`.
 
-See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and data-flow diagram.
+The safety floor evaluates red flags before normal progression. It can force `rojo`; optional LLM reasoning cannot lower that escalation. Ambiguous answers enter clarification and repeated ambiguity can become `amarillo`.
+
+See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and data-flow view.
 
 ## Models and Tools
 
-| Area | Model or tool | Role |
+| Area | Implementation | Role |
 |---|---|---|
-| Web service | FastAPI, Uvicorn | HTTP, WebSocket, static console, and health endpoint |
-| STT | Faster-Whisper, CPU/int8 by default; Groq optional | Real Spanish `audio.webm` transcription with no simulated fallback |
-| Triage reasoning | Llama 3 through Groq, optional | Contextual triage when a Groq client is configured |
-| Safety floor | Python regex and threshold rules | Synchronous red-flag detection and one-way escalation to `rojo` |
-| Retrieval | BGE-M3, ChromaDB | Multilingual embeddings and persistent local document retrieval |
-| TTS | Kokoro-82M ONNX, Piper fallback | Local Spanish speech synthesis with mock audio fallback for development/tests |
-| Validation | Pytest, FastAPI TestClient | Unit and integration coverage for conversation, escalation, RAG, admin, voice, TTS, and health paths |
+| Web service | FastAPI and Uvicorn | HTTP routes, WebSocket, static surfaces, and health endpoint |
+| STT | Faster-Whisper, CPU/int8, local by default | Real Spanish transcription of browser `audio.webm` |
+| Optional STT | Groq Whisper | Remote alternative selected explicitly with configuration |
+| Triage reasoning | Optional Llama 3 through Groq | Contextual reasoning after the deterministic safety floor |
+| Safety floor | Python rules and thresholds | One-way red-flag escalation |
+| Retrieval | BGE-M3 and ChromaDB | Local multilingual embeddings and persistent document retrieval |
+| PDF extraction | `pypdf` | Included dependency for the RAG ingestion path |
+| Demo TTS | Browser `speechSynthesis` | Primary audible response in the browser demo |
+| Optional backend TTS | Kokoro ONNX and Piper | Local synthesis or fallback audio when configured |
 
-## Reproducible Setup
+## Operational Flow
 
-1. Create and activate a virtual environment:
+1. The browser opens a WebSocket and requests microphone permission.
+2. The user clicks **Grabar**, speaks, and clicks **Enviar**.
+3. The browser sends the WebM chunks followed by `EOT`; there is no automatic turn detection or active barge-in flow.
+4. The backend transcribes, evaluates safety, advances the conversation state, and sends transcript and agent-response events.
+5. The browser speaks the response with `speechSynthesis`; the session can emit a final summary.
 
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+## Installation
 
-2. Install the pinned dependencies:
+Supported route: Linux, Python 3.12, and Chrome/Chromium. The first installation and model download are not bounded to 15 minutes; timing depends on network, CPU, disk, packages, and model size.
 
-   ```bash
-   python -m pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+cp .env.example .env
+```
 
-3. Create local configuration from the checked-in template (Linux is the supported route):
+Set `STT_PROVIDER=local` and `LOCAL_WHISPER_MODEL=tiny` for the first test. Use `small` for better accuracy when the machine can handle the larger download and CPU cost. The RAG path depends on `pypdf`, already pinned in `requirements.txt`.
 
-   ```bash
-   cp .env.example .env
-   ```
+```bash
+.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-   `STT_PROVIDER=local` is the default on Linux/Python 3.12 and the Faster-Whisper model downloads on first transcription. Set `LOCAL_WHISPER_MODEL=tiny` for a faster demo. Chrome/Chromium must be granted microphone permission. Set `STT_PROVIDER=groq` and a real `GROQ_API_KEY` only for the optional remote provider. Do not commit `.env` or credentials.
+The browser call is at `http://localhost:8000/call`; API docs are at `http://localhost:8000/docs`.
 
-4. Start the service:
+## Current Validation
 
-   ```bash
-   uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-5. Verify the service and interfaces:
-
-   ```bash
-   curl -s http://localhost:8000/health
-   .venv/bin/pytest -q
-   ```
-
-   Expected test result: `57 passed`.
-
-   Available interfaces are `http://localhost:8000/docs`, `http://localhost:8000/admin`, and the call surface at `http://localhost:8000/call`.
-
-## Verified Tests
-
-Command executed from the repository root:
+Recorded checks for the current build:
 
 ```text
 ./.venv/bin/pytest -q
-57 passed, 3 warnings in 23.24s
+57 passed, 3 warnings
 ```
 
-The warnings are dependency deprecation warnings and did not fail the suite. Running the system `pytest` outside the project virtual environment is not a valid project verification because required packages such as ChromaDB and pandas are unavailable there.
+- HTTP smoke: `GET /health` returned `200`.
+- WebSocket smoke: audio connection accepted and `ping` returned `pong`.
+- Video evidence: 46 seconds, 1280x720, generated from local Chromium captures.
+- No automated end-to-end browser test is claimed. The test suite covers application contracts and service behavior, not a full browser-driven call.
 
-## Limitations and Risks
+## Risks and Boundaries
 
-- The application is a prototype and is not a medical device or a substitute for professional clinical judgment.
-- Live Groq behavior requires a valid `GROQ_API_KEY`, network access, and provider availability.
-- Local STT requires installing `faster-whisper` and an initial model download; if unavailable, the backend returns an actionable error instead of fake text.
-- The browser voice demo requires Chrome/Chromium microphone permission and uses WebSocket, not telephone infrastructure.
-- The default voice route uses a sample trajectory snapshot; production deployment requires authenticated patient and case data handling.
-- Rate limiting is process-local and should be replaced with shared protection for multiple workers or public deployment.
-- ChromaDB is local persistent storage; it is not configured as a multi-user production data platform.
-- TTS may return mock silent WAV data when model files or Piper are unavailable.
-- Authentication, authorization, audit retention, encryption policy, and production observability are outside this repository's current scope.
-- The test suite verifies behavior but does not establish clinical efficacy or regulatory compliance.
+- This is a prototype and not a medical device or clinical decision substitute.
+- Local STT needs `faster-whisper`, model weights, CPU, disk, and a first download.
+- Groq paths need a valid `GROQ_API_KEY`, network access, and provider availability.
+- The sample voice route uses synthetic case context rather than authenticated patient data.
+- Process-local rate limiting does not provide shared protection across workers.
+- ChromaDB is local persistent storage, not a multi-user production data platform.
+- Optional TTS can return silent mock WAV data if model assets are absent.
+- Authentication, authorization, audit retention, encryption, observability, clinical validation, and regulatory work are outside this repository.
 
-## Delivery Checklist
+## Final Checklist
 
-- [x] Final technical report created.
-- [x] Architecture diagram created from the implemented components.
-- [x] README links to both delivery artifacts.
-- [x] README links to the published YouTube video.
-- [x] `LICENSE` is present and referenced by the README/report.
-- [x] `.env.example` is present and referenced by the setup instructions.
-- [x] Test suite verified with 57 passing tests.
-- [x] Video demo published on YouTube as **unlisted**.
-
-## License and Configuration References
-
-The repository is distributed under the [MIT License](LICENSE). Local environment variables must be created from [.env.example](.env.example); secrets belong in `.env`, which must remain uncommitted.
+- [x] README documents the supported setup, exact manual voice flow, limits, and security boundaries.
+- [x] Architecture diagram reflects local Faster-Whisper, manual turns, browser `speechSynthesis`, and optional Groq.
+- [x] 57-test validation recorded.
+- [x] HTTP health smoke returned 200.
+- [x] WebSocket audio and ping-pong smoke completed.
+- [x] Video evidence generated at 46 seconds and 1280x720.
+- [x] No automated browser E2E integration is represented as completed.
+- [x] [MIT License](LICENSE) and [.env.example](.env.example) are referenced.

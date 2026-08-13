@@ -1,51 +1,58 @@
 # Architecture Diagram
 
-The system is a single FastAPI service serving a browser call surface, an administrative console, and the backend services that process voice turns and clinical knowledge documents.
+The application is a single FastAPI service with a browser call surface, a local document-management surface, and shared conversation, safety, retrieval, and voice services.
 
 ```mermaid
 flowchart LR
-    Patient[Patient browser / microphone]
-    Call[Call surface\n/call]
-    WS[FastAPI WebSocket\n/ws/voice]
-    STT[Faster-Whisper local by default\nSTTService]
-    Conv[ConversationManager\nadaptive domain state]
-    Safety[EscalationEngine\ndeterministic safety floor]
-    LLM[Optional Groq Llama 3\ncontextual triage]
-    TTS[TTSService\nKokoro ONNX / Piper / mock]
-    Summary[Call summary\ntriage + trajectory snapshot]
+    Patient[Patient browser<br/>microphone]
+    Call[Call surface<br/>/call]
+    Speech[Browser speechSynthesis<br/>primary demo TTS]
+    WS[FastAPI WebSocket<br/>/ws/voice]
+    STT[Faster-Whisper local<br/>CPU/int8 default]
+    Conv[ConversationManager<br/>manual turn state]
+    Safety[EscalationEngine<br/>deterministic safety floor]
+    Groq[Optional Groq<br/>Llama 3 reasoning]
+    BackendTTS[Optional Kokoro/Piper<br/>backend TTS]
+    Summary[Call summary<br/>triage + trajectory]
 
-    Admin[Admin console\n/admin]
-    API[Admin REST API\n/api/documents]
-    RAG[RAGService\nPDF extraction + chunking]
+    Admin[Admin console<br/>/admin]
+    API[Admin REST API<br/>/api/documents]
+    RAG[RAGService<br/>PDF extraction + chunks]
+    PDF[pypdf]
     Embed[BGE-M3 embeddings]
     Chroma[(Persistent ChromaDB)]
-    Files[(textos/\ndocuments.json)]
+    Registry[(textos/<br/>documents.json)]
 
     Patient --> Call --> WS
     WS --> STT --> Conv
     Conv --> Safety
-    Safety -. optional context .-> LLM
-    LLM --> Conv
-    Conv --> TTS --> WS
+    Safety -. optional context .-> Groq
+    Groq --> Conv
+    Conv --> Speech
+    Conv -. optional audio .-> BackendTTS -.-> WS
     Conv --> Summary
     WS --> Summary
 
     Admin --> API --> RAG
-    RAG --> Embed --> Chroma
-    RAG --> Files
+    RAG --> PDF --> Embed --> Chroma
+    RAG --> Registry
     API --> Chroma
 ```
 
-## Flow Explanation
+## Flow
 
-1. The browser sends audio chunks through `/ws/voice`. The router buffers audio, supports an end-of-turn control message, applies connection rate limiting, and enforces an idle timeout.
-2. `STTService` transcribes the audio with local Faster-Whisper by default; Groq is an explicit optional provider. The browser submits explicit manual turns.
-3. `ConversationManager` records the turn and advances through the six follow-up domains. `EscalationEngine` evaluates red flags first. A detected critical signal forces `rojo`; valid but ambiguous input enters the clarification loop.
-4. The response text is synthesized by Kokoro when model files are available, otherwise Piper or a mock WAV fallback is used. The WebSocket returns transcript, response metadata, audio, and a final call summary when applicable.
-5. Administrators upload PDFs through `/api/documents`. The service validates filenames and MIME/extension expectations, extracts text, creates BGE-M3 embeddings, stores chunks in ChromaDB, and maintains the document registry in `textos/documents.json`.
+1. `/call` requests microphone access and opens `/ws/voice`.
+2. The user performs a manual turn: **Grabar** -> speak -> **Enviar**. The browser sends WebM chunks and `EOT`.
+3. `STTService` transcribes with local Faster-Whisper by default. Groq STT is an explicit optional alternative.
+4. `ConversationManager` advances through the follow-up domains. `EscalationEngine` evaluates red flags first and cannot be overridden downward by optional Groq reasoning.
+5. The browser receives structured events and speaks the response with `speechSynthesis`. Kokoro/Piper are optional backend TTS paths, not the primary demo path.
+6. The session can emit a call summary containing triage and trajectory data.
+7. Administrators upload PDFs through `/api/documents`; `pypdf` extracts text, the RAG service chunks and embeds it, and ChromaDB persists the collection.
 
 ## Boundaries
 
-- The voice session and local RAG store run inside the same application process.
-- The deterministic safety floor is the mandatory safety boundary; optional LLM reasoning is not allowed to downgrade a floor escalation.
-- `LICENSE` defines distribution terms, and `.env.example` defines the expected local configuration shape without containing secrets.
+- This is a browser microphone/WebSocket call, not telephony.
+- Turn submission is manual; automatic barge-in is not part of the demonstrated flow.
+- The voice session and local RAG store run in the same application process.
+- The default voice route uses a sample trajectory snapshot.
+- `.env.example` describes configuration without secrets; [LICENSE](LICENSE) defines distribution terms.

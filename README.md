@@ -1,91 +1,135 @@
-# Post-Operative Voice Follow-Up Agent (Colombian Spanish)
+# Post-Operative Voice Follow-Up Agent
 
-An enterprise-grade, real-time bidirectional voice assistant for post-operative patient follow-up in Colombian Spanish. Features low-latency speech-to-text (STT), hot-swappable RAG with metadata hashing, a deterministic clinical safety floor coupled with Llama 3 reasoning, local text-to-speech (TTS), and a comprehensive evaluation harness.
+Web-based voice follow-up for post-operative patients in Colombian Spanish. The application combines a FastAPI backend, local speech recognition, a deterministic clinical safety floor, optional retrieval and reasoning, and a browser call surface that runs with a microphone.
 
----
+This is a portfolio prototype, not a telephone system, medical device, or replacement for qualified clinical judgment.
 
-## Linux Demo: Real Microphone Voice Loop
+## What It Does
 
-The supported route is Linux with Python 3.12 and `STT_PROVIDER=local`: real browser microphone audio (`audio.webm`) goes through the WebSocket to Faster-Whisper, then the response is spoken by the browser. This is not real telephony; it is a web call using a microphone and WebSocket with manual turn submission.
+- Conducts a structured post-operative follow-up across pain, fever, mobility, wound, appetite, and sleep.
+- Transcribes real microphone audio locally with Faster-Whisper by default.
+- Applies deterministic red-flag rules before optional LLM reasoning; a safety escalation cannot be downgraded by the LLM.
+- Supports local PDF ingestion, chunking, embeddings, metadata filtering, and persistent ChromaDB retrieval.
+- Exposes an admin console, API documentation, health endpoint, and browser call surface.
+- Returns structured transcript, response, triage, escalation, and session-summary events.
 
-### 1. Clone & Virtual Environment
+## Limitations
+
+- The voice experience is a web call over microphone and WebSocket, not PSTN or SIP telephony.
+- Turns are manual: the user clicks **Grabar**, speaks, clicks **Enviar**, and waits for the response.
+- The primary demo TTS path is the browser's `speechSynthesis`. Kokoro/Piper backend TTS is optional and may fall back to silent mock WAV data for development.
+- The default voice route uses a sample trajectory snapshot. It is not connected to authenticated patient records.
+- No clinical efficacy, regulatory compliance, or production readiness is claimed.
+
+## Requirements
+
+- Linux
+- Python 3.12
+- Chrome or Chromium with microphone permission
+- Network access, CPU, and disk space for dependency and model downloads
+
+The first setup can exceed 15 minutes. Its duration depends on network speed, CPU, available disk, package installation, and the selected model download. The RAG backend requires `pypdf`; it is already included in `requirements.txt`.
+
+## Quick Start
+
 ```bash
 git clone <repo-url> postop-voice-agent
 cd postop-voice-agent
 python3.12 -m venv .venv
 source .venv/bin/activate
-```
-
-### 2. Install Dependencies
-```bash
-pip install --upgrade pip
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-```
-
-### 3. Environment Configuration
-```bash
 cp .env.example .env
-# Local STT is the default. Groq is optional.
 ```
 
-### 4. Initial Model Download
-`faster-whisper` runs locally on CPU with int8. The model downloads on first local transcription, so the first turn needs network access and disk space; this is not included in a 15-minute setup promise. Set `LOCAL_WHISPER_MODEL=tiny` for a faster demo. Tests do not download models.
+For the first local voice test, use the small download and faster startup profile:
 
-### 5. Run Application
+```dotenv
+STT_PROVIDER=local
+LOCAL_WHISPER_MODEL=tiny
+```
+
+Use `LOCAL_WHISPER_MODEL=small` when better transcription accuracy matters more than download size and CPU time. The default code setting is `small`; setting `tiny` explicitly is recommended for the first trial.
+
+Start the service:
+
 ```bash
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Open `http://localhost:8000/call` in Chrome/Chromium and allow microphone permission. Browser Speech Synthesis is the base audible response path; WAV audio from the backend remains supported when available. Groq can be selected with `STT_PROVIDER=groq` and a real `GROQ_API_KEY`.
+Open these URLs in Chrome/Chromium:
 
-### 6. Verify Operational State
-- Health check: `curl -s http://localhost:8000/health`
-- Admin Console: Access static dashboard at `http://localhost:8000/admin`
-- Interactive API Docs: `http://localhost:8000/docs`
-
----
-
-## Models Used & Rationale (G3 Declaration)
-
-| Component | Model / Technology | Rationale |
+| Surface | URL | Purpose |
 |---|---|---|
-| **Speech-to-Text (STT)** | Faster-Whisper local CPU/int8 by default; Groq optional | Real Spanish transcription from `audio.webm`; no fake transcript fallback. |
-| **Reasoning & Triage** | Llama 3 via Groq API | High-speed inference adhering strictly to the allowed model family with zero cold-start overhead. |
-| **Embeddings** | BGE-M3 (`BAAI/bge-m3`) | State-of-the-art multi-lingual embedding model optimized for Spanish clinical text retrieval. |
-| **Vector Store** | ChromaDB (Local Persistent) | Zero external server dependency, fast metadata filtering, and metadata-hashed version purging. |
-| **Text-to-Speech (TTS)** | Kokoro-82M ONNX / Piper | Natural-sounding local synthesis with automatic fallback if load exceeds 5s. |
+| Call | `http://localhost:8000/call` | Microphone/WebSocket conversation |
+| Admin | `http://localhost:8000/admin` | Document management console |
+| API docs | `http://localhost:8000/docs` | Interactive HTTP API documentation |
+| Health | `http://localhost:8000/health` | Service health check |
 
----
+## Exact Call Flow
 
-## Evaluation Harness & Run Command
+1. Open `/call`, click **Iniciar llamada**, and allow microphone access.
+2. Click **Grabar** and speak one patient turn.
+3. Click **Enviar**. The browser sends the recorded `audio.webm` and then the `EOT` turn boundary through `/ws/voice`.
+4. Faster-Whisper transcribes the audio, the conversation and triage services process it, and the browser speaks the response with `speechSynthesis`.
+5. Repeat the manual turn until the follow-up ends, then click **Finalizar llamada**.
 
-Run the evaluation suite against the dataset (via local path):
+## Configuration
+
+Start from [.env.example](.env.example). Keep secrets in `.env`; never commit that file.
+
+| Variable | Local default or use |
+|---|---|
+| `STT_PROVIDER` | `local`; use `groq` only when a real remote provider is intentionally configured |
+| `LOCAL_WHISPER_MODEL` | `small` in the application; `tiny` is recommended for the first test |
+| `GROQ_API_KEY` | Required only for optional Groq STT/reasoning paths |
+| `KOKORO_MODEL_PATH` / `KOKORO_VOICES_PATH` | Optional local Kokoro assets |
+| `PIPER_BINARY` / `PIPER_MODEL` | Optional Piper fallback |
+
+## Verification and Evaluation
+
+Run the repository tests from the activated environment:
+
+```bash
+.venv/bin/pytest -q
+```
+
+The current validation result is **57 passed**. Additional smoke checks recorded for the current build are HTTP `/health` returning `200` and a WebSocket connection handling audio plus ping-pong (`ping` -> `pong`).
+
+Run the evaluation harness when a compatible dataset is available:
+
 ```bash
 .venv/bin/python eval/run_eval.py --dataset /path/to/dataset_final.xlsx --offline
 ```
-- Measures triage accuracy, latency (P50 < 600ms, P95 < 950ms), and confusion matrix.
-- Enforces eliminatory safety gate: **zero missed `rojo` red flags**.
-- The repository suite currently verifies **57 tests**.
 
-## Deliverables
+The harness reports triage metrics, latency, and a confusion matrix, including the zero-missed-red-flag safety gate configured by the evaluation code.
 
-- [Final Technical Report](FINAL_REPORT.md)
-- [Architecture Diagram](ARCHITECTURE_DIAGRAM.md)
-- [Local Video Demo](demo/postop-voice-agent-demo.mp4)
-- [Video Demo](https://youtu.be/RGncO51IokA) — YouTube unlisted and published
+## Repository Map
 
-The video demo is published on YouTube as **unlisted** and is accessible through the direct link above.
+```text
+backend/                 FastAPI app, routers, conversation, STT, TTS, RAG, escalation
+console/                 Browser call and admin interfaces
+demo/                    Video evidence and regeneration script
+eval/                    Dataset evaluation runner
+tests/                   Unit and integration tests
+textos/                  Local document registry and knowledge assets
+README.md               Project entry point
+FINAL_REPORT.md         Technical report and validation record
+ARCHITECTURE_DIAGRAM.md System diagram and flow explanation
+```
 
-The repository includes the [MIT License](LICENSE). Use [.env.example](.env.example) as the safe starting point for local configuration; keep secrets in `.env` and out of version control.
+## Security and Secrets
 
----
+- Do not commit `.env`, API keys, patient data, or uploaded clinical documents.
+- The application validates uploaded document names and uses safe subprocess argument lists for optional Piper execution.
+- The current rate limiter is process-local and is not sufficient protection for a public multi-worker deployment.
+- Authentication, authorization, audit retention, encryption policy, and production observability remain deployment responsibilities.
 
-## Rubric Map & Deliverables
+## Project Artifacts
 
-- **Phase 1 (Scaffold & Setup)**: Pinned requirements, setup automation, FastAPI app & health endpoint.
-- **Phase 2 (Hot-Swap RAG)**: ChromaDB integration, BGE-M3 embeddings, 512/64 chunking, version-hash purging.
-- **Phase 3 (Escalation Engine)**: Deterministic red-flag safety floor (Colombian Spanish regex rules), Llama 3 reasoning, and Pydantic decision schema.
-- **Phase 4 (Admin Console)**: Secure REST endpoints for PDF upload/management, path-traversal prevention, and static dashboard.
-- **Phase 5 (Conversation Manager)**: Adaptive multi-domain state machine, clarification loops for ambiguous inputs (`capa2`), and escalation handoffs.
-- **Phase 6 (Voice Loop)**: WebSocket audio streaming (`/ws/voice`), STT/TTS integration, rate limiting, and session summary records.
-- **Phase 7 (Evaluation & Docs)**: Comprehensive evaluation runner, latency budgets, confusion matrix, and reproducible setup guide.
+- [Technical report](FINAL_REPORT.md)
+- [Architecture diagram](ARCHITECTURE_DIAGRAM.md)
+- [Demo instructions and scope](demo/README.md)
+- [Local demo video](demo/postop-voice-agent-demo.mp4)
+- [Unlisted video](https://youtu.be/RGncO51IokA)
+- [MIT License](LICENSE)
