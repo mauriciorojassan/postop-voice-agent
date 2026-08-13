@@ -4,13 +4,13 @@
 
 This repository contains a FastAPI application for post-operative patient follow-up in Colombian Spanish. The reproducible demo is a web microphone call: real `audio.webm` travels over WebSocket to local Faster-Whisper, the response is returned as text, and Chrome/Chromium speaks it with `speechSynthesis`. It is not real telephony.
 
-The verified test result is **55 passed** using the repository virtual environment. This is a prototype and must not replace assessment or instructions from qualified clinical staff.
+The verified test result is **57 passed** using `.venv` on Linux with Python 3.12. This is a prototype and must not replace assessment or instructions from qualified clinical staff.
 
 ## Architecture
 
 The application is a single Python/FastAPI service with two primary surfaces:
 
-- `/ws/voice`: accepts audio chunks, transcribes them, processes a conversation turn, returns structured events and synthesized audio, and emits a call summary.
+- `/ws/voice`: accepts manually submitted audio turns, transcribes them, processes a conversation turn, returns structured events and synthesized audio, and emits a call summary.
 - `/api/documents`: uploads, lists, and deletes PDF knowledge documents. Uploads are validated, extracted, chunked, embedded, and stored in persistent ChromaDB.
 
 The voice path uses `ConversationManager` to progress through pain, fever, mobility, wound, appetite, and sleep domains. `EscalationEngine` evaluates each utterance before normal progression. Its deterministic safety floor can force `rojo`; optional Groq/Llama reasoning can provide contextual triage but cannot lower a safety-floor escalation. Ambiguous replies receive clarification, and repeated ambiguity is handed off as `amarillo`.
@@ -29,7 +29,7 @@ See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and dat
 | TTS | Kokoro-82M ONNX, Piper fallback | Local Spanish speech synthesis with mock audio fallback for development/tests |
 | Validation | Pytest, FastAPI TestClient | Unit and integration coverage for conversation, escalation, RAG, admin, voice, TTS, and health paths |
 
-## Reproducible Setup in 15 Minutes or Less
+## Reproducible Setup
 
 1. Create and activate a virtual environment:
 
@@ -51,7 +51,7 @@ See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and dat
    cp .env.example .env
    ```
 
-   `STT_PROVIDER=local` is the default and `LOCAL_WHISPER_MODEL=small` downloads on first transcription. Chrome/Chromium must be granted microphone permission. Set `STT_PROVIDER=groq` and a real `GROQ_API_KEY` only for the optional remote provider. Do not commit `.env` or credentials.
+   `STT_PROVIDER=local` is the default on Linux/Python 3.12 and the Faster-Whisper model downloads on first transcription. Set `LOCAL_WHISPER_MODEL=tiny` for a faster demo. Chrome/Chromium must be granted microphone permission. Set `STT_PROVIDER=groq` and a real `GROQ_API_KEY` only for the optional remote provider. Do not commit `.env` or credentials.
 
 4. Start the service:
 
@@ -66,7 +66,7 @@ See [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) for the component and dat
    .venv/bin/pytest -q
    ```
 
-   Expected test result: `55 passed`.
+   Expected test result: `57 passed`.
 
    Available interfaces are `http://localhost:8000/docs`, `http://localhost:8000/admin`, and the call surface at `http://localhost:8000/call`.
 
@@ -76,7 +76,7 @@ Command executed from the repository root:
 
 ```text
 ./.venv/bin/pytest -q
-55 passed, 3 warnings in 42.30s
+57 passed, 3 warnings in 23.24s
 ```
 
 The warnings are dependency deprecation warnings and did not fail the suite. Running the system `pytest` outside the project virtual environment is not a valid project verification because required packages such as ChromaDB and pandas are unavailable there.
@@ -99,12 +99,11 @@ The warnings are dependency deprecation warnings and did not fail the suite. Run
 - [x] Final technical report created.
 - [x] Architecture diagram created from the implemented components.
 - [x] README links to both delivery artifacts.
-- [x] README includes the pending video placeholder without inventing a URL.
+- [x] README links to the published YouTube video.
 - [x] `LICENSE` is present and referenced by the README/report.
 - [x] `.env.example` is present and referenced by the setup instructions.
-- [x] Test suite verified with 48 passing tests.
-- [ ] Upload the video demo to YouTube as **unlisted** before final submission.
-- [ ] Replace the video placeholder with the real YouTube unlisted URL before final submission.
+- [x] Test suite verified with 57 passing tests.
+- [x] Video demo published on YouTube as **unlisted**.
 
 ## License and Configuration References
 

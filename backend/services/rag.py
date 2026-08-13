@@ -149,10 +149,14 @@ class RAGService:
     def extract_pdf_text(self, pdf_path: str) -> str:
         """
         Extracts text from PDF file using pypdf.
-        Handles scanned-PDF-no-text-layer case gracefully with a warning/fallback message.
+        Raises a clear error when pypdf is unavailable or no text layer is present.
         """
         try:
             from pypdf import PdfReader
+        except ImportError as e:
+            raise RuntimeError("PDF extraction requires pypdf; install requirements.txt.") from e
+
+        try:
             reader = PdfReader(pdf_path)
             full_text = []
             for page_idx, page in enumerate(reader.pages):
@@ -163,8 +167,12 @@ class RAGService:
             combined = "\n".join(full_text).strip()
             if not combined:
                 logger.warning(f"PDF '{pdf_path}' yielded no text layer (scanned PDF or image-only).")
-                return f"[Documento escaneado sin capa de texto: {os.path.basename(pdf_path)}]"
+                raise ValueError(
+                    f"PDF '{os.path.basename(pdf_path)}' has no extractable text layer."
+                )
             return combined
         except Exception as e:
             logger.error(f"Failed to extract text from PDF '{pdf_path}': {e}")
-            return f"[Error al extraer texto del PDF {os.path.basename(pdf_path)}: {str(e)}]"
+            raise RuntimeError(
+                f"Failed to extract text from PDF '{os.path.basename(pdf_path)}': {e}"
+            ) from e

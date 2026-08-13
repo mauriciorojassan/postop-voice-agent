@@ -6,14 +6,14 @@ An enterprise-grade, real-time bidirectional voice assistant for post-operative 
 
 ## Linux Demo: Real Microphone Voice Loop
 
-The supported route is Linux with `STT_PROVIDER=local`: real browser microphone audio (`audio.webm`) goes through the WebSocket to Faster-Whisper, then the response is spoken by the browser. This is not real telephony; it is a web call using a microphone and WebSocket.
+The supported route is Linux with Python 3.12 and `STT_PROVIDER=local`: real browser microphone audio (`audio.webm`) goes through the WebSocket to Faster-Whisper, then the response is spoken by the browser. This is not real telephony; it is a web call using a microphone and WebSocket with manual turn submission.
 
 ### 1. Clone & Virtual Environment
 ```bash
 git clone <repo-url> postop-voice-agent
 cd postop-voice-agent
-python3 -m venv venv
-source venv/bin/activate
+python3.12 -m venv .venv
+source .venv/bin/activate
 ```
 
 ### 2. Install Dependencies
@@ -29,7 +29,7 @@ cp .env.example .env
 ```
 
 ### 4. Initial Model Download
-`faster-whisper` runs on CPU with int8. The `small` model downloads on first local transcription, so the first turn needs network access and disk space. Set `LOCAL_WHISPER_MODEL=tiny` for a lighter demo. Tests do not download models.
+`faster-whisper` runs locally on CPU with int8. The model downloads on first local transcription, so the first turn needs network access and disk space; this is not included in a 15-minute setup promise. Set `LOCAL_WHISPER_MODEL=tiny` for a faster demo. Tests do not download models.
 
 ### 5. Run Application
 ```bash
@@ -61,17 +61,18 @@ Open `http://localhost:8000/call` in Chrome/Chromium and allow microphone permis
 
 Run the evaluation suite against the dataset (via local path):
 ```bash
-python eval/run_eval.py --dataset /path/to/dataset_final.xlsx --offline
+.venv/bin/python eval/run_eval.py --dataset /path/to/dataset_final.xlsx --offline
 ```
 - Measures triage accuracy, latency (P50 < 600ms, P95 < 950ms), and confusion matrix.
 - Enforces eliminatory safety gate: **zero missed `rojo` red flags**.
+- The repository suite currently verifies **57 tests**.
 
 ## Deliverables
 
 - [Final Technical Report](FINAL_REPORT.md)
 - [Architecture Diagram](ARCHITECTURE_DIAGRAM.md)
 - [Local Video Demo](demo/postop-voice-agent-demo.mp4)
-- [Video Demo](https://youtu.be/RGncO51IokA) — YouTube unlisted
+- [Video Demo](https://youtu.be/RGncO51IokA) — YouTube unlisted and published
 
 The video demo is published on YouTube as **unlisted** and is accessible through the direct link above.
 

@@ -38,5 +38,6 @@ ffprobe -v error -show_entries format=duration,size \
 - The recording uses real local HTTP responses and Chromium screenshots for `/admin`, `/call`, `/docs`, and `/health`.
 - The video is silent; adding narration was intentionally skipped because it is not needed for evidence.
 - The video does not claim a live voice exchange, model inference, or external service response.
-- No credentials, uploads, patient data, YouTube publication, or external URLs are used.
-- The `48 passed` frame reflects the local `.venv/bin/pytest -q` run recorded for this demo.
+- No credentials, uploads, or patient data are used.
+- The video is also published on YouTube as an unlisted video: https://youtu.be/RGncO51IokA
+- The `57 passed` frame reflects the local `.venv/bin/pytest -q` run recorded for this demo.

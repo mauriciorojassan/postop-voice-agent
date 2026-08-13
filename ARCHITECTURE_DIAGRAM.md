@@ -7,7 +7,7 @@ flowchart LR
     Patient[Patient browser / microphone]
     Call[Call surface\n/call]
     WS[FastAPI WebSocket\n/ws/voice]
-    STT[Groq Whisper Large V3\nSTTService]
+    STT[Faster-Whisper local by default\nSTTService]
     Conv[ConversationManager\nadaptive domain state]
     Safety[EscalationEngine\ndeterministic safety floor]
     LLM[Optional Groq Llama 3\ncontextual triage]
@@ -39,7 +39,7 @@ flowchart LR
 ## Flow Explanation
 
 1. The browser sends audio chunks through `/ws/voice`. The router buffers audio, supports an end-of-turn control message, applies connection rate limiting, and enforces an idle timeout.
-2. `STTService` transcribes the audio with Groq Whisper when configured, or returns a development transcript when a live key is unavailable.
+2. `STTService` transcribes the audio with local Faster-Whisper by default; Groq is an explicit optional provider. The browser submits explicit manual turns.
 3. `ConversationManager` records the turn and advances through the six follow-up domains. `EscalationEngine` evaluates red flags first. A detected critical signal forces `rojo`; valid but ambiguous input enters the clarification loop.
 4. The response text is synthesized by Kokoro when model files are available, otherwise Piper or a mock WAV fallback is used. The WebSocket returns transcript, response metadata, audio, and a final call summary when applicable.
 5. Administrators upload PDFs through `/api/documents`. The service validates filenames and MIME/extension expectations, extracts text, creates BGE-M3 embeddings, stores chunks in ChromaDB, and maintains the document registry in `textos/documents.json`.

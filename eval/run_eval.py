@@ -51,9 +51,9 @@ def run_evaluation(dataset_path: str, offline: bool = False, capa: Optional[str]
         case_latencies = []
         
         for turn in patient_turns:
-            start_t = time.time()
+            start_t = time.perf_counter()
             decision = engine.evaluate(str(turn))
-            lat_ms = np.random.uniform(200, 450) if offline else (time.time() - start_t) * 1000.0
+            lat_ms = (time.perf_counter() - start_t) * 1000.0
                 
             case_latencies.append(lat_ms)
             if decision.triage_level == "rojo":
@@ -114,13 +114,7 @@ def run_evaluation(dataset_path: str, offline: bool = False, capa: Optional[str]
     print("\n--- Evaluation Report ---")
     print(json.dumps(report, indent=2))
 
-    if offline and rojo_misses > 0:
-        print(f"\nNOTE: offline-floor-only mode reports the deterministic safety-floor baseline.")
-        print(f"      {rojo_misses} rojo cases were not caught by the regex floor alone — these")
-        print(f"      require the Llama reasoning layer (online mode, --offline omitted with a")
-        print(f"      Groq API key) to catch subtle/sub-clinical red-flag utterances.")
-        print(f"      The eliminatory gate is intended to be evaluated against the online (LLM) result.")
-    elif rojo_misses > 0:
+    if rojo_misses > 0:
         print(f"\nFAILURE: {rojo_misses} rojo cases missed! Eliminatory gate violated.")
         sys.exit(1)
 

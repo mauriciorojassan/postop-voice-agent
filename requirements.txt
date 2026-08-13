@@ -12,5 +12,6 @@ kokoro-onnx==0.1.2
 soundfile>=0.13.0
 pytest==8.1.0
 httpx==0.27.2
-# Dependencia opcional de la ruta STT_PROVIDER=local; descarga pesos al primer uso.
-faster-whisper>=1.1.0
+# Ruta STT_PROVIDER=local; descarga pesos al primer uso.
+faster-whisper==1.2.1
+pypdf==5.9.0

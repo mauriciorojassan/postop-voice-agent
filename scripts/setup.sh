@@ -2,8 +2,8 @@
 set -e
 
 echo "==> Setting up Post-Op Voice Agent..."
-python3 -m venv venv
-source venv/bin/activate
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
