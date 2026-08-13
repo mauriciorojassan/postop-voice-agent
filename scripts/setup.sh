@@ -9,7 +9,7 @@ pip install -r requirements.txt
 
 if [ ! -f .env ]; then
     cp .env.example .env
-    echo "==> Created .env from .env.example. Please populate GROQ_API_KEY."
+    echo "==> Created .env from .env.example. Local mode requires no credentials; Groq is optional."
 fi
 
 echo "==> Setup complete! Run uvicorn backend.main:app --reload --port 8000"

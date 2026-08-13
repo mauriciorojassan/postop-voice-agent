@@ -33,7 +33,7 @@ The first setup can exceed 15 minutes. Its duration depends on network speed, CP
 ## Quick Start
 
 ```bash
-git clone <repo-url> postop-voice-agent
+git clone https://github.com/mauriciorojassan/postop-voice-agent.git
 cd postop-voice-agent
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -83,7 +83,7 @@ Start from [.env.example](.env.example). Keep secrets in `.env`; never commit th
 | `STT_PROVIDER` | `local`; use `groq` only when a real remote provider is intentionally configured |
 | `LOCAL_WHISPER_MODEL` | `small` in the application; `tiny` is recommended for the first test |
 | `GROQ_API_KEY` | Required only for optional Groq STT/reasoning paths |
-| `KOKORO_MODEL_PATH` / `KOKORO_VOICES_PATH` | Optional local Kokoro assets |
+| `KOKORO_MODEL_PATH` / `KOKORO_VOICES_PATH` | Optional local Kokoro assets; install its package separately only if this backend path is enabled |
 | `PIPER_BINARY` / `PIPER_MODEL` | Optional Piper fallback |
 
 ## Verification and Evaluation
